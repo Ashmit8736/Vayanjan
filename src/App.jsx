@@ -2,9 +2,14 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { useSelector } from 'react-redux';
+import UserAdminDashboard from './features/useradmin/UserAdminDashboard';
 import Login from './features/auth/Login';
 import SuperAdminRoutes from './routes/superadmin';
 import useOnlineStatus from './hooks/useOnlineStatus';
+
+// ... existing imports
+
+
 
 // Create Material-UI theme
 const theme = createTheme({
@@ -47,7 +52,7 @@ const theme = createTheme({
 
 function App() {
     const isOnline = useOnlineStatus();
-    const { isAuthenticated } = useSelector((state) => state.auth);
+    const { isAuthenticated, user } = useSelector((state) => state.auth);
 
     useEffect(() => {
         // Handle window state on auth change
@@ -70,12 +75,20 @@ function App() {
                 <Route
                     path="/login"
                     element={
-                        isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
+                        isAuthenticated ? <Navigate to={user?.role === 'USER' ? '/user-admin' : '/dashboard'} replace /> : <Login />
                     }
                 />
+
+                {/* Client User Dashboard */}
+                <Route
+                    path="/user-admin/*"
+                    element={isAuthenticated ? <UserAdminDashboard /> : <Navigate to="/login" replace />}
+                />
+
+                {/* Super Admin Routes - Catch all remainder */}
                 <Route path="/*" element={<SuperAdminRoutes />} />
+
                 <Route path="/" element={<Navigate to="/login" replace />} />
-                {/* Fallback for unknown routes not handled by sub-routers */}
                 <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
         </ThemeProvider>

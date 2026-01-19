@@ -7,7 +7,7 @@ import axiosInstance from './axios-config';
  */
 export const loginAPI = async (credentials) => {
     try {
-        const response = await axiosInstance.post('/super-admin/login', credentials);
+        const response = await axiosInstance.post('/auth/login', credentials);
         return response;
     } catch (error) {
         throw error;

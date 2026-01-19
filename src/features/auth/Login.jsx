@@ -26,7 +26,7 @@ import loginImage from '../../assets/images/login.webp'; // Import the image
 const Login = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
+    const { loading, error, isAuthenticated, user } = useSelector((state) => state.auth);
     const { isOnline } = useSelector((state) => state.offline);
 
     const [formData, setFormData] = useState({
@@ -36,13 +36,18 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && user) {
             if (window.electronAPI) {
                 window.electronAPI.loginSuccess();
             }
-            navigate('/dashboard');
+
+            if (user.role === 'USER') {
+                navigate('/user-admin');
+            } else {
+                navigate('/dashboard');
+            }
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, user, navigate]);
 
     useEffect(() => {
         return () => {
