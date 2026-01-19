@@ -13,3 +13,20 @@ export const registerUserAPI = async (userData) => {
         throw error;
     }
 };
+
+/**
+ * Get all users API call with pagination
+ * @param {number} page - Page number (default: 1)
+ * @param {number} limit - Items per page (default: 6)
+ * @returns {Promise}
+ */
+export const getUsersAPI = async (page = 1, limit = 6) => {
+    try {
+        const response = await axiosInstance.get('/users/list', {
+            params: { page, limit }
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
