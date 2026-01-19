@@ -9,7 +9,8 @@ export const login = createAsyncThunk(
             const response = await loginAPI(credentials);
             // Store token in localStorage
             localStorage.setItem('authToken', response.token);
-            localStorage.setItem('user', JSON.stringify(response.user));
+            const userWithRole = { ...response.user, role: response.role };
+            localStorage.setItem('user', JSON.stringify(userWithRole));
             return response;
         } catch (error) {
             return rejectWithValue(error.response?.data || { message: 'Login failed' });
@@ -63,7 +64,7 @@ const authSlice = createSlice({
             .addCase(login.fulfilled, (state, action) => {
                 state.loading = false;
                 state.isAuthenticated = true;
-                state.user = action.payload.user;
+                state.user = { ...action.payload.user, role: action.payload.role };
                 state.token = action.payload.token;
                 state.error = null;
             })
