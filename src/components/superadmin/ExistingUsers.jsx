@@ -214,6 +214,7 @@ const ExistingUsers = () => {
                                 <TableCell sx={{ color: '#757575', fontWeight: 500, bgcolor: '#F9FAFB' }}>Customer / Business</TableCell>
                                 <TableCell sx={{ color: '#757575', fontWeight: 500, bgcolor: '#F9FAFB' }}>Contact Info</TableCell>
                                 <TableCell sx={{ color: '#757575', fontWeight: 500, bgcolor: '#F9FAFB' }}>Plan</TableCell>
+                                <TableCell sx={{ color: '#757575', fontWeight: 500, bgcolor: '#F9FAFB' }}>Store Count</TableCell>
                                 <TableCell sx={{ color: '#757575', fontWeight: 500, bgcolor: '#F9FAFB' }}>Status</TableCell>
                                 <TableCell sx={{ color: '#757575', fontWeight: 500, bgcolor: '#F9FAFB' }}>Joined Date</TableCell>
                                 <TableCell sx={{ color: '#757575', fontWeight: 500, bgcolor: '#F9FAFB' }} align="right">Actions</TableCell>
@@ -268,6 +269,9 @@ const ExistingUsers = () => {
                                                         borderRadius: 1
                                                     }}
                                                 />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2">{row.store_count}</Typography>
                                             </TableCell>
                                             <TableCell>
                                                 <Chip
