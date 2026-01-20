@@ -22,9 +22,8 @@ import {
 import {
     Dashboard as DashboardIcon,
     Store,
-    AccountTree,
     Group,
-    Inventory,
+    Inventory as InventoryIcon,
     History,
     Assessment,
     PowerSettingsNew,
@@ -36,6 +35,8 @@ import { logout } from '../../store/slices/authSlice'; // Fixed path if needed, 
 
 import DashboardOverview from '../../components/useradmin/DashboardOverview';
 import NewBranch from '../../components/useradmin/NewBranch'; // Import NewBranch
+import Inventory from '../../components/useradmin/Inventory';
+import UserManagement from '../../components/useradmin/UserManagement';
 
 const UserAdminDashboard = () => {
     const dispatch = useDispatch();
@@ -64,6 +65,15 @@ const UserAdminDashboard = () => {
             case 'newBranch': // Handle new branch view
                 content = <NewBranch onCancel={() => setActiveView('dashboard')} />;
                 break;
+
+                case 'inventory':
+            content = <Inventory />;
+            break;
+
+            case 'users':
+            content = <UserManagement />;
+            break;
+
             case 'dashboard':
             default:
                 content = <DashboardOverview onNavigate={setActiveView} />; // Pass navigation handler
@@ -81,9 +91,8 @@ const UserAdminDashboard = () => {
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
         { id: 'myshops', label: 'My Shops', icon: Store },
-        { id: 'branches', label: 'Branches', icon: AccountTree },
         { id: 'users', label: 'User Management', icon: Group },
-        { id: 'inventory', label: 'Inventory', icon: Inventory },
+        { id: 'inventory', label: 'Inventory', icon: InventoryIcon },
         { id: 'billing', label: 'Billing History', icon: History },
         { id: 'reports', label: 'Reports', icon: Assessment }
     ];
