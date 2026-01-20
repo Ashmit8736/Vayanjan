@@ -76,7 +76,8 @@ const NewUser = () => {
         phone: '',
         email: '',
         password: '',
-        subscription_name: 'premium'
+        subscription_name: 'premium',
+        store_count: 1
     });
     const [isMultiBranch, setIsMultiBranch] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -91,7 +92,8 @@ const NewUser = () => {
         try {
             const payload = {
                 ...formData,
-                // Ensure correct field names for backend
+                // If multi-branch disabled, send 1; else send entered value
+                store_count: isMultiBranch ? (parseInt(formData.store_count) || 1) : 1
             };
             const response = await registerUserAPI(payload);
             if (response.success) {
@@ -99,7 +101,7 @@ const NewUser = () => {
                 // Reset form or redirect
                 setFormData({
                     shop_name: '', gst_number: '', address: '', district: '', state: '', pincode: '',
-                    name: '', phone: '', email: '', password: '', subscription_name: 'premium'
+                    name: '', phone: '', email: '', password: '', subscription_name: 'premium', store_count: 1
                 });
             }
         } catch (error) {
@@ -266,7 +268,7 @@ const NewUser = () => {
                                             {isMultiBranch && (
                                                 <Fade in={isMultiBranch}>
                                                     <Box sx={{ width: 120 }}>
-                                                        <InputField icon={Store} placeholder="Count" type="number" />
+                                                        <InputField icon={Store} placeholder="Count" type="number" name="store_count" value={formData.store_count} onChange={handleChange} />
                                                     </Box>
                                                 </Fade>
                                             )}
@@ -279,7 +281,7 @@ const NewUser = () => {
 
                     {/* Footer */}
                     <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', gap: 2, bgcolor: 'white', borderTop: '1px solid #EDEDED' }}>
-                        <Button variant="outlined" sx={{ textTransform: 'none', color: '#546E7A', borderColor: '#CFD8DC', px: 3 }} onClick={() => setFormData({ shop_name: '', gst_number: '', address: '', district: '', state: '', pincode: '', name: '', phone: '', email: '', password: '', subscription_name: 'premium' })}>Reset Form</Button>
+                        <Button variant="outlined" sx={{ textTransform: 'none', color: '#546E7A', borderColor: '#CFD8DC', px: 3 }} onClick={() => { setFormData({ shop_name: '', gst_number: '', address: '', district: '', state: '', pincode: '', name: '', phone: '', email: '', password: '', subscription_name: 'premium', store_count: 1 }); setIsMultiBranch(false); }}>Reset Form</Button>
                         <Button variant="contained" disabled={loading} onClick={handleSubmit} sx={{ bgcolor: '#FF5722', '&:hover': { bgcolor: '#F4511E' }, textTransform: 'none', px: 4, fontWeight: 600, boxShadow: '0 4px 14px rgba(255, 87, 34, 0.4)' }}>
                             {loading ? 'Creating...' : 'Create Client Account'}
                         </Button>
