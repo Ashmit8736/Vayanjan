@@ -60,8 +60,8 @@ const NewBranch = ({ onCancel }) => {
                                         <InputField icon={Badge} placeholder="License Number" />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        <Typography variant="caption" fontWeight="600" sx={{ mb: 0.5, display: 'block' }}>Branch Manager Name</Typography>
-                                        <InputField icon={Person} placeholder="Manager's Name" />
+                                        <Typography variant="caption" fontWeight="600" sx={{ mb: 0.5, display: 'block' }}>GST Number</Typography>
+                                        <InputField icon={Badge} placeholder="GST Number" />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
                                         <Typography variant="caption" fontWeight="600" sx={{ mb: 0.5, display: 'block' }}>Branch Email</Typography>
