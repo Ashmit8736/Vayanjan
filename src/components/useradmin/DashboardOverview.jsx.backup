@@ -293,7 +293,25 @@ const DashboardOverview = ({ onNavigate }) => {
                         </List>
 
                         <Box sx={{ p: 2, borderTop: '1px solid #F5F5F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-
+                            <Button
+                                size="small"
+                                onClick={handlePrevPage}
+                                disabled={currentPage === 1 || loading}
+                                sx={{ textTransform: 'none', color: '#424242' }}
+                            >
+                                Previous
+                            </Button>
+                            <Typography variant="caption" color="text.secondary">
+                                Page {currentPage} of {totalPages}
+                            </Typography>
+                            <Button
+                                size="small"
+                                onClick={handleNextPage}
+                                disabled={currentPage === totalPages || loading}
+                                sx={{ textTransform: 'none', color: '#009688', fontWeight: 600 }}
+                            >
+                                Next
+                            </Button>
                         </Box>
                     </Paper>
                 </Grid>
