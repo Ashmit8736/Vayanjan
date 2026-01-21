@@ -27,6 +27,7 @@ export const logoutAPI = async () => {
     }
 };
 
+
 /**
  * Verify token
  * @returns {Promise}
@@ -34,6 +35,19 @@ export const logoutAPI = async () => {
 export const verifyTokenAPI = async () => {
     try {
         const response = await axiosInstance.get('/super-admin/verify');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get User Branch Stats
+ * @returns {Promise}
+ */
+export const getBranchStatsAPI = async () => {
+    try {
+        const response = await axiosInstance.get('/users/branch-stats');
         return response;
     } catch (error) {
         throw error;
