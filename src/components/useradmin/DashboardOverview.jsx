@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { getBranchStatsAPI } from '../../services/api/authAPI';
 import {
     Box,
     Grid,
@@ -27,11 +28,44 @@ import {
 
 const DashboardOverview = ({ onNavigate }) => {
     const { user } = useSelector((state) => state.auth);
+    const [branchStats, setBranchStats] = useState({
+        limit: 0,
+        used: 0,
+        loading: true
+    });
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const response = await getBranchStatsAPI();
+                setBranchStats({
+                    limit: response.store_count,
+                    used: response.created_branches_count,
+                    loading: false
+                });
+            } catch (error) {
+                console.error("Failed to fetch branch stats:", error);
+                setBranchStats(prev => ({ ...prev, loading: false }));
+            }
+        };
+
+        if (user) {
+            fetchStats();
+        }
+    }, [user]);
     // Mock Data
     const metrics = [
         { label: 'Total Revenue (Today)', value: '₹42,500', sub: '', action: '', color: '#FFFFFF', isAlert: false },
         { label: 'Active Orders', value: '18', sub: '', action: '', color: '#FFFFFF', isAlert: false },
-        { label: 'Total Shops & Branches', value: '3', sub: '2 Main, 1 Branch', action: '', icon: Store, color: '#FFFFFF', isAlert: false },
+        {
+            label: 'Total Shops & Branches',
+            value: branchStats.loading ? '...' : `${branchStats.used} / ${branchStats.limit}`,
+            sub: branchStats.loading ? 'Loading...' : `${branchStats.used} Used, ${branchStats.limit} Limit`,
+            action: '',
+            icon: Store,
+            color: '#FFFFFF',
+            isAlert: false
+        },
         { label: 'Low Stock Items', value: '7', sub: 'Action needed', action: 'Action needed', color: '#FFFFFF', isAlert: true }
     ];
 
@@ -107,7 +141,21 @@ const DashboardOverview = ({ onNavigate }) => {
                     <Button
                         startIcon={<Add />}
                         variant="contained"
-                        onClick={() => onNavigate('newBranch')}
+                        onClick={() => {
+                            if (branchStats.loading) {
+                                alert("Please wait, fetching subscription details...");
+                                return;
+                            }
+
+                            const remaining = branchStats.limit - branchStats.used;
+
+                            // Check: Agar remaining space 1 se kam hai, toh block karo
+                            if (remaining < 1) {
+                                alert(`Please upgrade your plan to create new branch. Limit: ${branchStats.limit}, Used: ${branchStats.used}`);
+                                return;
+                            }
+                            onNavigate('newBranch');
+                        }}
                         sx={{
                             bgcolor: '#009688',
                             '&:hover': { bgcolor: '#00796B' },
