@@ -2,6 +2,8 @@ import { Box } from "@mui/material";
 import { Routes, Route } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import UnitManagement from "./Masters/UnitManagement";
+import RawMaterials from "./Masters/RawMaterials";
+import AvailableStock from "./ManageStock/AvailableStock";
 
 const InventoryDashboard = () => {
   return (
@@ -14,6 +16,8 @@ const InventoryDashboard = () => {
         <Routes>
           {/* 👇 YAHI SE UNIT PAGE OPEN HOTA HAI */}
           <Route path="masters/units" element={<UnitManagement />} />
+          <Route path="masters/rawmaterials" element={<RawMaterials />} />
+          <Route path="managestock/availablestock" element={<AvailableStock />} />
         </Routes>
       </Box>
     </Box>
