@@ -1,10 +1,15 @@
 import axiosInstance from './axios-config';
 
-/**
- * Register User API call (for Super Admin to create clients)
- * @param {Object} userData
- * @returns {Promise}
- */
+export const createBranchUserAPI = async (userData) => {
+    try {
+        const response = await axiosInstance.post('/users/branchUser', userData);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 export const registerUserAPI = async (userData) => {
     try {
         const response = await axiosInstance.post('/users/signup', userData);
@@ -14,17 +19,18 @@ export const registerUserAPI = async (userData) => {
     }
 };
 
-/**
- * Get all users API call with pagination
- * @param {number} page - Page number (default: 1)
- * @param {number} limit - Items per page (default: 6)
- * @returns {Promise}
- */
-export const getUsersAPI = async (page = 1, limit = 6) => {
+export const getBranchUsersAPI = async (branchId) => {
     try {
-        const response = await axiosInstance.get('/users/list', {
-            params: { page, limit }
-        });
+        const response = await axiosInstance.get(`/users/branch/${branchId}`);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const getUsersAPI = async (params) => {
+    try {
+        const response = await axiosInstance.get('/users/list', { params });
         return response;
     } catch (error) {
         throw error;

@@ -1,7 +1,13 @@
 import { useState } from "react";
+import AddBranchUser from "./AddBranchUser";
 
 export default function UserManagement() {
   const [role, setRole] = useState("All");
+  const [isAddingUser, setIsAddingUser] = useState(false);
+
+  if (isAddingUser) {
+    return <AddBranchUser onCancel={() => setIsAddingUser(false)} />;
+  }
 
   return (
     <>
@@ -177,7 +183,7 @@ export default function UserManagement() {
           {/* TOP BAR */}
           <div className="topbar">
             <input className="search" placeholder="Search users, email, role..." />
-            <button className="btn-primary">Add User</button>
+            <button className="btn-primary" onClick={() => setIsAddingUser(true)}>Add User</button>
           </div>
 
           {/* FILTERS */}

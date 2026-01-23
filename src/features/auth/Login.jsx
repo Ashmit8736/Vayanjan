@@ -41,8 +41,10 @@ const Login = () => {
                 window.electronAPI.loginSuccess();
             }
 
-            if (user.role === 'USER') {
+            if (user.role === 'USER' || user.role === 'owner') {
                 navigate('/user-admin');
+            } else if (user.role === 'manager' || user.role === 'both') {
+                navigate('/manager');
             } else {
                 navigate('/dashboard');
             }
