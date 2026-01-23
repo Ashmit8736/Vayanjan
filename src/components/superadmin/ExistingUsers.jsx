@@ -343,23 +343,34 @@ const ExistingUsers = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const usersPerPage = 6;
+const fetchUsers = async (page = 1) => {
+    setLoading(true);
+    try {
+        const response = await getUsersAPI({
+            page,
+            limit: usersPerPage
+        });
 
-    const fetchUsers = async (page = 1) => {
-        setLoading(true);
-        try {
-            const response = await getUsersAPI(page, usersPerPage);
-            if (response.success) {
-                setUsers(response.data);
-                setTotalPages(response.pagination.totalPages);
-                setTotalCount(response.pagination.total);
-                setCurrentPage(page);
-            }
-        } catch (error) {
-            console.error("Failed to fetch users:", error);
-        } finally {
-            setLoading(false);
+        if (!response.success) {
+            throw new Error("API failed");
         }
-    };
+
+        setUsers(response.data);
+        setTotalPages(response.pagination.totalPages);
+        setTotalCount(response.pagination.total);
+        setCurrentPage(page);
+
+    } catch (error) {
+        console.error(
+            "Failed to fetch users:",
+            error.response?.data || error.message
+        );
+    } finally {
+        setLoading(false);
+    }
+};
+
+
 
     useEffect(() => {
         fetchUsers(1);

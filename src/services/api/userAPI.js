@@ -36,3 +36,10 @@ export const getUsersAPI = async (params) => {
         throw error;
     }
 };
+
+// export const getUsersAPI = async (page, limit) => {
+//     const response = await axiosInstance.get('/users/list', {
+//         params: { page, limit }
+//     });
+//     return response.data;
+// };
