@@ -67,8 +67,8 @@
           </ListItemButton>
           <Collapse in={open.manageStock}>
             <List disablePadding>
-              <SubItem to="/stock/available" label="Available Stock" />
-              <SubItem to="/stock/closing" label="Closing Stock" />
+              <SubItem to="/inventory/managestock/availablestock" label="Available Stock" />
+              <SubItem to="/inventory/managestock/closingstock" label="Closing Stock" />
             </List>
           </Collapse>
 
@@ -113,7 +113,9 @@
           </ListItemButton>
           <Collapse in={open.masters}>
             <List disablePadding>
-              <SubItem to="/masters/raw-materials" label="Raw Materials" />
+              {/* <SubItem to="/masters/rawmaterials" label="Raw Materials" /> */}
+              <SubItem to="/inventory/masters/rawmaterials" label="Raw Materials" />
+
               <SubItem to="/masters/item-recipes" label="Item Recipes" />
               <SubItem to="/masters/suppliers" label="Suppliers" />
               {/* <SubItem to="/masters/units" label="Units" /> */}
