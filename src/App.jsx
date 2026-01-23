@@ -6,6 +6,7 @@ import UserAdminDashboard from "./features/useradmin/UserAdminDashboard";
 import InventoryDashboard from "./features/userinventory/InventoryDashboard";
 import BillingDashboard from "./features/userBilling/BillingDashboard";
 import Login from "./features/auth/Login";
+import ManagerDashboard from "./features/manager/ManagerDashboard";
 import SuperAdminRoutes from "./routes/superadmin";
 import useOnlineStatus from "./hooks/useOnlineStatus";
 
@@ -151,6 +152,17 @@ function App() {
           element={
             isAuthenticated && user?.role === "billing" ? (
               <BillingDashboard />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/manager/*"
+          element={
+            isAuthenticated && (user?.role === "manager" || user?.role === "both") ? (
+              <ManagerDashboard />
             ) : (
               <Navigate to="/login" replace />
             )

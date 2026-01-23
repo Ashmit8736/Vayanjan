@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { getBranchStatsAPI } from '../../services/api/authAPI';
+import { getMyBranchesAPI } from '../../services/api/branchAPI';
 import {
     Box,
     Grid,
@@ -13,7 +14,8 @@ import {
     List,
     ListItem,
     ListItemText,
-    ListItemAvatar
+    ListItemAvatar,
+    CircularProgress
 } from '@mui/material';
 import {
     Sync,
@@ -22,7 +24,6 @@ import {
     LocalCafe,
     ArrowForward,
     Notifications,
-
     AccountTree
 } from '@mui/icons-material';
 
@@ -33,6 +34,8 @@ const DashboardOverview = ({ onNavigate }) => {
         used: 0,
         loading: true
     });
+    const [shops, setShops] = useState([]);
+    const [shopsLoading, setShopsLoading] = useState(true);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -49,10 +52,35 @@ const DashboardOverview = ({ onNavigate }) => {
             }
         };
 
+        const fetchBranches = async () => {
+            try {
+                const response = await getMyBranchesAPI();
+                if (response && response.success) {
+                    const formattedShops = response.data.map(branch => ({
+                        id: branch.branch_id,
+                        name: branch.branch_name,
+                        address: `${branch.address}, ${branch.city}`,
+                        type: 'Branch',
+                        sub: '', // Can be populated if backend supports sub-branches
+                        icon: Store,
+                        infoColor: '#E0F2F1',
+                        iconColor: '#00695C'
+                    }));
+                    setShops(formattedShops);
+                }
+            } catch (error) {
+                console.error("Failed to fetch branches:", error);
+            } finally {
+                setShopsLoading(false);
+            }
+        };
+
         if (user) {
             fetchStats();
+            fetchBranches();
         }
     }, [user]);
+
     // Mock Data
     const metrics = [
         { label: 'Total Revenue (Today)', value: '₹42,500', sub: '', action: '', color: '#FFFFFF', isAlert: false },
@@ -67,29 +95,6 @@ const DashboardOverview = ({ onNavigate }) => {
             isAlert: false
         },
         { label: 'Low Stock Items', value: '7', sub: 'Action needed', action: 'Action needed', color: '#FFFFFF', isAlert: true }
-    ];
-
-    const shops = [
-        {
-            id: 1,
-            name: 'Spice Garden Restaurant',
-            address: 'Civil Lines, Main Road',
-            type: 'Main Branch',
-            sub: '1 Sub-branch',
-            icon: Store,
-            infoColor: '#E0F2F1',
-            iconColor: '#00695C'
-        },
-        {
-            id: 2,
-            name: 'Chai Point Express',
-            address: 'Sector 14, Market Complex',
-            type: 'Single Outlet',
-            sub: '',
-            icon: LocalCafe,
-            infoColor: '#E0F2F1',
-            iconColor: '#00695C'
-        }
     ];
 
     const recentUsers = [
@@ -228,78 +233,87 @@ const DashboardOverview = ({ onNavigate }) => {
                     <Paper elevation={0} sx={{ p: 0, borderRadius: 3, border: '1px solid #F0F0F0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
                         <Box sx={{ p: 3, borderBottom: '1px solid #F5F5F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="h6" fontWeight="700">Your Shops</Typography>
-                            <Button size="small" variant="outlined" sx={{ borderRadius: 2, color: '#424242', borderColor: '#E0E0E0', textTransform: 'none' }}>View All</Button>
                         </Box>
 
-                        <List sx={{ p: 0 }}>
-                            {shops.map((shop, index) => (
-                                <ListItem
-                                    key={shop.id}
-                                    sx={{
-                                        p: 3,
-                                        borderBottom: index !== shops.length - 1 ? '1px solid #F5F5F5' : 'none',
-                                        flexWrap: 'wrap',
-                                        gap: 2
-                                    }}
-                                >
-                                    <Box sx={{
-                                        width: 48,
-                                        height: 48,
-                                        bgcolor: shop.infoColor,
-                                        borderRadius: 2,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: shop.iconColor,
-                                        mr: 2
-                                    }}>
-                                        <shop.icon />
-                                    </Box>
-
-                                    <Box sx={{ flexGrow: 1 }}>
-                                        <Typography variant="subtitle1" fontWeight="700" sx={{ mb: 0.5 }}>{shop.name}</Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{shop.address}</Typography>
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <Chip label={shop.type} size="small" sx={{ borderRadius: 1, bgcolor: '#F5F7FA', fontWeight: 600, fontSize: '0.7rem' }} />
-                                            {shop.sub && <Chip label={shop.sub} size="small" sx={{ borderRadius: 1, bgcolor: '#F5F7FA', fontWeight: 600, fontSize: '0.7rem' }} />}
+                        <List sx={{ p: 0, maxHeight: 310, overflowY: 'auto' }}>
+                            {shopsLoading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                                    <CircularProgress size={30} />
+                                </Box>
+                            ) : shops.length === 0 ? (
+                                <Box sx={{ p: 4, textAlign: 'center' }}>
+                                    <Typography color="text.secondary">No shops found. Create one to get started.</Typography>
+                                </Box>
+                            ) : (
+                                shops.map((shop, index) => (
+                                    <ListItem
+                                        key={shop.id}
+                                        sx={{
+                                            p: 3,
+                                            borderBottom: index !== shops.length - 1 ? '1px solid #F5F5F5' : 'none',
+                                            flexWrap: 'wrap',
+                                            gap: 2
+                                        }}
+                                    >
+                                        <Box sx={{
+                                            width: 48,
+                                            height: 48,
+                                            bgcolor: shop.infoColor,
+                                            borderRadius: 2,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: shop.iconColor,
+                                            mr: 2
+                                        }}>
+                                            <shop.icon />
                                         </Box>
-                                    </Box>
 
-                                    <Box sx={{ display: 'flex', gap: 1 }}>
-                                        <Button
-                                            startIcon={<AccountTree />}
-                                            variant="outlined"
-                                            size="small"
-                                            sx={{
-                                                textTransform: 'none',
-                                                color: '#424242',
-                                                borderColor: '#E0E0E0',
-                                                borderRadius: 2,
-                                                minHeight: 36
-                                            }}
-                                        >
-                                            Add Branch
-                                        </Button>
-                                        <Button
-                                            variant="outlined"
-                                            size="small"
-                                            sx={{
-                                                textTransform: 'none',
-                                                color: '#009688',
-                                                borderColor: '#E0F2F1',
-                                                bgcolor: '#E0F2F1',
-                                                borderRadius: 2,
-                                                fontWeight: 600,
-                                                minHeight: 36,
-                                                border: 'none',
-                                                '&:hover': { bgcolor: '#B2DFDB', border: 'none' }
-                                            }}
-                                        >
-                                            Manage
-                                        </Button>
-                                    </Box>
-                                </ListItem>
-                            ))}
+                                        <Box sx={{ flexGrow: 1 }}>
+                                            <Typography variant="subtitle1" fontWeight="700" sx={{ mb: 0.5 }}>{shop.name}</Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{shop.address}</Typography>
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <Chip label={shop.type} size="small" sx={{ borderRadius: 1, bgcolor: '#F5F7FA', fontWeight: 600, fontSize: '0.7rem' }} />
+                                                {shop.sub && <Chip label={shop.sub} size="small" sx={{ borderRadius: 1, bgcolor: '#F5F7FA', fontWeight: 600, fontSize: '0.7rem' }} />}
+                                            </Box>
+                                        </Box>
+
+                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <Button
+                                                startIcon={<AccountTree />}
+                                                variant="outlined"
+                                                size="small"
+                                                sx={{
+                                                    textTransform: 'none',
+                                                    color: '#424242',
+                                                    borderColor: '#E0E0E0',
+                                                    borderRadius: 2,
+                                                    minHeight: 36
+                                                }}
+                                            >
+                                                Add Branch
+                                            </Button>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                sx={{
+                                                    textTransform: 'none',
+                                                    color: '#009688',
+                                                    borderColor: '#E0F2F1',
+                                                    bgcolor: '#E0F2F1',
+                                                    borderRadius: 2,
+                                                    fontWeight: 600,
+                                                    minHeight: 36,
+                                                    border: 'none',
+                                                    '&:hover': { bgcolor: '#B2DFDB', border: 'none' }
+                                                }}
+                                            >
+                                                Manage
+                                            </Button>
+                                        </Box>
+                                    </ListItem>
+                                ))
+                            )}
                         </List>
                     </Paper>
                 </Grid>
