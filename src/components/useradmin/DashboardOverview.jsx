@@ -27,6 +27,8 @@ import {
     AccountTree
 } from '@mui/icons-material';
 
+import axios from '../../services/api/axios-config';
+
 const DashboardOverview = ({ onNavigate }) => {
     const { user } = useSelector((state) => state.auth);
     const [branchStats, setBranchStats] = useState({
@@ -36,8 +38,25 @@ const DashboardOverview = ({ onNavigate }) => {
     });
     const [shops, setShops] = useState([]);
     const [shopsLoading, setShopsLoading] = useState(true);
+    const [recentUsers, setRecentUsers] = useState([]);
+    const [usersLoading, setUsersLoading] = useState(true);
 
     useEffect(() => {
+        const fetchRecentUsers = async () => {
+            try {
+                const response = await axios.get("/users/owner/users");
+                if (response.success) {
+                    // Sort by ID descending
+                    const sortedUsers = response.data.sort((a, b) => b.id - a.id);
+                    setRecentUsers(sortedUsers);
+                }
+            } catch (error) {
+                console.error("Failed to fetch recent users:", error);
+            } finally {
+                setUsersLoading(false);
+            }
+        };
+
         const fetchStats = async () => {
             try {
                 const response = await getBranchStatsAPI();
@@ -78,9 +97,11 @@ const DashboardOverview = ({ onNavigate }) => {
         if (user) {
             fetchStats();
             fetchBranches();
+            fetchRecentUsers();
         }
     }, [user]);
 
+    // Mock Data
     // Mock Data
     const metrics = [
         { label: 'Total Revenue (Today)', value: '₹42,500', sub: '', action: '', color: '#FFFFFF', isAlert: false },
@@ -95,12 +116,6 @@ const DashboardOverview = ({ onNavigate }) => {
             isAlert: false
         },
         { label: 'Low Stock Items', value: '7', sub: 'Action needed', action: 'Action needed', color: '#FFFFFF', isAlert: true }
-    ];
-
-    const recentUsers = [
-        { name: 'Rahul A.', role: 'Billing Clerk', shop: 'Spice Garden', avatarBg: '#E3F2FD', avatarColor: '#1565C0' },
-        { name: 'Sneha K.', role: 'Inv. Manager', shop: 'Chai Point', avatarBg: '#FCE4EC', avatarColor: '#C2185B' },
-        { name: 'Vikram P.', role: 'Manager', shop: 'Spice Garden', avatarBg: '#E8F5E9', avatarColor: '#2E7D32' }
     ];
 
     return (
@@ -326,32 +341,55 @@ const DashboardOverview = ({ onNavigate }) => {
                             <Typography variant="caption" color="text.secondary">Manage branch permissions</Typography>
                         </Box>
 
-                        <List sx={{ p: 2 }}>
-                            {recentUsers.map((user, index) => (
-                                <ListItem key={index} sx={{ borderRadius: 2, mb: 1, '&:hover': { bgcolor: '#F9FAFB' } }}>
-                                    <ListItemAvatar>
-                                        <Avatar sx={{ bgcolor: user.avatarBg, color: user.avatarColor, fontWeight: 700, fontSize: '0.8rem' }}>
-                                            {user.name.split(' ')[0][0]}{user.name.split(' ')[1][0]}
-                                        </Avatar>
-                                    </ListItemAvatar>
-                                    <ListItemText
-                                        primary={<Typography variant="subtitle2" fontWeight="700">{user.name}</Typography>}
-                                        secondary={<Typography variant="caption" color="text.secondary">{user.role}</Typography>}
-                                    />
-                                    <Chip
-                                        label={user.shop}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{
-                                            borderRadius: 1,
-                                            fontSize: '0.65rem',
-                                            height: 20,
-                                            borderColor: '#E0E0E0',
-                                            bg: 'white'
-                                        }}
-                                    />
-                                </ListItem>
-                            ))}
+                        <List sx={{ p: 2, maxHeight: 310, overflowY: 'auto' }}>
+                            {usersLoading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                                    <CircularProgress size={30} />
+                                </Box>
+                            ) : recentUsers.length === 0 ? (
+                                <Box sx={{ p: 4, textAlign: 'center' }}>
+                                    <Typography color="text.secondary">No users found.</Typography>
+                                </Box>
+                            ) : (
+                                recentUsers.map((user, index) => {
+                                    // Simple mock logic for colors to keep UI consistent
+                                    const colors = [
+                                        { bg: '#E3F2FD', text: '#1565C0' },
+                                        { bg: '#FCE4EC', text: '#C2185B' },
+                                        { bg: '#E8F5E9', text: '#2E7D32' },
+                                        { bg: '#FFF3E0', text: '#EF6C00' },
+                                        { bg: '#F3E5F5', text: '#7B1FA2' },
+                                    ];
+                                    const color = colors[index % colors.length];
+                                    const initials = user.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
+
+                                    return (
+                                        <ListItem key={user.id} sx={{ borderRadius: 2, mb: 1, '&:hover': { bgcolor: '#F9FAFB' } }}>
+                                            <ListItemAvatar>
+                                                <Avatar sx={{ bgcolor: color.bg, color: color.text, fontWeight: 700, fontSize: '0.8rem' }}>
+                                                    {initials}
+                                                </Avatar>
+                                            </ListItemAvatar>
+                                            <ListItemText
+                                                primary={<Typography variant="subtitle2" fontWeight="700">{user.name}</Typography>}
+                                                secondary={<Typography variant="caption" color="text.secondary">{user.role}</Typography>}
+                                            />
+                                            <Chip
+                                                label={user.branch_name || 'N/A'}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{
+                                                    borderRadius: 1,
+                                                    fontSize: '0.65rem',
+                                                    height: 20,
+                                                    borderColor: '#E0E0E0',
+                                                    bg: 'white'
+                                                }}
+                                            />
+                                        </ListItem>
+                                    );
+                                })
+                            )}
                         </List>
 
                         <Box sx={{ p: 2, borderTop: '1px solid #F5F5F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

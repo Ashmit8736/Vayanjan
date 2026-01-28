@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     Grid,
@@ -46,13 +46,90 @@ const clientBilling = [
     { name: 'Rahul Jain', business: 'Pizza Castle', plan: 'Basic', amount: '₹4,500', due: 'In 3 days', status: 'Pending', color: 'warning' },
 ];
 
+import { getUsersAPI } from '../../services/api/userAPI';
+
 const DashboardOverview = () => {
+    const [totalClients, setTotalClients] = useState('...');
+    const [clientGrowth, setClientGrowth] = useState('...');
+    const [activeRestaurants, setActiveRestaurants] = useState('...');
+    const [outletGrowth, setOutletGrowth] = useState('...');
+
+    useEffect(() => {
+        const fetchClientCount = async () => {
+            try {
+                // Fetch a large number to calculate growth locally
+                const response = await getUsersAPI({ page: 1, limit: 1000 });
+                if (response.success && response.pagination) {
+                    const total = response.pagination.total;
+                    setTotalClients(total);
+
+                    const users = response.data;
+                    const now = new Date();
+                    const currentMonth = now.getMonth();
+                    const currentYear = now.getFullYear();
+
+                    let totalStores = 0;
+                    let usersThisMonth = 0;
+                    let storesThisMonth = 0;
+
+                    users.forEach(user => {
+                        const userDate = new Date(user.created_at);
+                        const isThisMonth = userDate.getMonth() === currentMonth &&
+                            userDate.getFullYear() === currentYear;
+
+                        if (isThisMonth) {
+                            usersThisMonth++;
+                        }
+
+                        if (user.store_count) {
+                            const count = Number(user.store_count);
+                            totalStores += count;
+                            if (isThisMonth) {
+                                storesThisMonth += count;
+                            }
+                        }
+                    });
+
+                    setActiveRestaurants(totalStores);
+
+                    // Client Growth
+                    const previousMonthUsers = total - usersThisMonth;
+                    let cGrowth = 0;
+                    if (previousMonthUsers > 0) {
+                        cGrowth = ((usersThisMonth / previousMonthUsers) * 100).toFixed(1);
+                    } else if (usersThisMonth > 0) {
+                        cGrowth = 100;
+                    }
+                    setClientGrowth(`+${cGrowth}% this month`);
+
+                    // Outlet Growth
+                    const previousMonthStores = totalStores - storesThisMonth;
+                    let oGrowth = 0;
+                    if (previousMonthStores > 0) {
+                        oGrowth = ((storesThisMonth / previousMonthStores) * 100).toFixed(1);
+                    } else if (storesThisMonth > 0) {
+                        oGrowth = 100;
+                    }
+                    setOutletGrowth(`+${oGrowth}% new outlets`);
+
+                }
+            } catch (error) {
+                console.error("Failed to fetch client count:", error);
+                setTotalClients('0');
+                setClientGrowth('0% this month');
+                setActiveRestaurants('0');
+                setOutletGrowth('0% new outlets');
+            }
+        };
+        fetchClientCount();
+    }, []);
+
     return (
         <Box sx={{ flexGrow: 1, overflow: 'hidden', p: 1.5, display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Grid container spacing={2} sx={{ mb: 1.5, flexShrink: 0 }}>
                 {[
-                    { title: 'Total Clients', value: '1,248', change: '+12% this month', color: '#E3F2FD', text: '#1976D2' },
-                    { title: 'Active Restaurants', value: '3,850', change: '+8% new outlets', color: '#E8F5E9', text: '#2E7D32' },
+                    { title: 'Total Clients', value: totalClients, change: clientGrowth, color: '#E3F2FD', text: '#1976D2' },
+                    { title: 'Active Restaurants', value: activeRestaurants, change: outletGrowth, color: '#E8F5E9', text: '#2E7D32' },
                     { title: 'Monthly Revenue', value: '₹42.5L', change: '+18% vs last month', color: '#F3E5F5', text: '#7B1FA2' },
                     { title: 'Expiring Licenses', value: '24', change: 'Action required', color: '#FFF3E0', text: '#E65100', isAlert: true },
                 ].map((stat, index) => (

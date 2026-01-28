@@ -1,13 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AddBranchUser from "./AddBranchUser";
+import axios from "../../services/api/axios-config";
 
 export default function UserManagement() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [role, setRole] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isAddingUser, setIsAddingUser] = useState(false);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("/users/owner/users");
+      if (response.success) {
+        setUsers(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (isAddingUser) {
     return <AddBranchUser onCancel={() => setIsAddingUser(false)} />;
   }
+
+  const filteredUsers = users.filter((user) => {
+    const matchesRole = role === "All" || user.role.toLowerCase() === role.toLowerCase();
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.role.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesRole && matchesSearch;
+  });
 
   return (
     <>
@@ -157,12 +188,18 @@ export default function UserManagement() {
         }
 
         .admin { background: #fee2e2; color: #b91c1c; }
-        .manager { background: #e0e7ff; color: #3730a3; }
-        .staff { background: #dcfce7; color: #15803d; }
+        .inventory { background: #e0e7ff; color: #3730a3; }
+        .billing { background: #dcfce7; color: #15803d; }
 
         /* STATUS */
         .active { color: #15803d; font-weight: 600; }
         .inactive { color: #b91c1c; font-weight: 600; }
+        
+        .loading {
+             text-align: center;
+             padding: 20px;
+             color: #6b7280;
+        }
       `}</style>
 
       {/* ===== PAGE ===== */}
@@ -182,66 +219,66 @@ export default function UserManagement() {
 
           {/* TOP BAR */}
           <div className="topbar">
-            <input className="search" placeholder="Search users, email, role..." />
+            <input
+              className="search"
+              placeholder="Search users, email, role..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
             <button className="btn-primary" onClick={() => setIsAddingUser(true)}>Add User</button>
           </div>
 
           {/* FILTERS */}
           <div className="filters">
-            {["All", "Admin", "Manager", "Staff"].map(r => (
+            {["All", "inventory", "billing"].map(r => (
               <button
                 key={r}
                 className={`filter ${role === r ? "active" : ""}`}
                 onClick={() => setRole(r)}
               >
-                {r}
+                {r.charAt(0).toUpperCase() + r.slice(1)}
               </button>
             ))}
           </div>
 
           {/* TABLE */}
           <div className="card">
-            <table>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Branch</th>
-                  <th>Status</th>
-                  <th>Joined</th>
-                </tr>
-              </thead>
-              <tbody>
-                <Row
-                  name="Rajesh Kumar"
-                  email="rajesh@restaurant.com"
-                  role="admin"
-                  branch="All"
-                  status="Active"
-                />
-                <Row
-                  name="Priya Sharma"
-                  email="priya@restaurant.com"
-                  role="manager"
-                  branch="Andheri"
-                  status="Active"
-                />
-                <Row
-                  name="Vikram Singh"
-                  email="vikram@restaurant.com"
-                  role="staff"
-                  branch="Bandra"
-                  status="Inactive"
-                />
-                <Row
-                  name="Anita Desai"
-                  email="anita@restaurant.com"
-                  role="staff"
-                  branch="Powai"
-                  status="Active"
-                />
-              </tbody>
-            </table>
+            {loading ? (
+              <div className="loading">Loading users...</div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Branch</th>
+                    <th>Status</th>
+                    <th>Phone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <Row
+                        key={user.id}
+                        name={user.name}
+                        email={user.email}
+                        role={user.role}
+                        branch={user.branch_name}
+                        status={user.is_active ? "Active" : "Inactive"}
+                        phone={user.phone}
+                      />
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: "center", padding: "20px" }}>
+                        No users found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
 
         </div>
@@ -252,7 +289,7 @@ export default function UserManagement() {
 
 /* ===== SMALL COMPONENT ===== */
 
-const Row = ({ name, email, role, branch, status }) => (
+const Row = ({ name, email, role, branch, status, phone }) => (
   <tr>
     <td>
       <div className="name">{name}</div>
@@ -263,6 +300,6 @@ const Row = ({ name, email, role, branch, status }) => (
     </td>
     <td>{branch}</td>
     <td className={status === "Active" ? "active" : "inactive"}>{status}</td>
-    <td>Jan 2024</td>
+    <td>{phone}</td>
   </tr>
 );
