@@ -64,7 +64,8 @@ const Sidebar = () => {
 
       <List sx={{ px: 1, mt: 1, flexGrow: 1 }}>
 
-        {[{ label: "Dashboard", to: "/" }, { label: "Purchase", to: "/purchase" }].map(
+        {[{ label: "Dashboard", to: "/" },
+         { label: "Purchase", to: "purchase" }].map(
           (item) => (
             <ListItemButton
               key={item.label}
