@@ -394,6 +394,16 @@ const AvailableStock = () => {
       .catch((err) => console.error("API Error:", err.message));
   }, []);
 
+  const formatQty = (value) => {
+  if (value === null || value === undefined) return 0;
+
+  const num = Number(value);
+
+  // agar decimal . ke baad 0 hi hain → integer dikhao
+  return Number.isInteger(num) ? num : num.toFixed(2);
+};
+
+
   return (
     <Box p={3}>
       {/* ================= HEADER ================= */}
@@ -508,7 +518,8 @@ const AvailableStock = () => {
 
       {/* AVAILABLE STOCK (PURCHASE UNIT) */}
       <TableCell>
-        {row.available_quantity_purchase} {row.purchase_unit_symbol}
+        {/* {row.available_quantity_purchase} {row.purchase_unit_symbol} */}
+        {formatQty(row.available_quantity_purchase)} {row.purchase_unit_symbol}
       </TableCell>
 
       {/* AVAILABLE STOCK (CONSUME UNIT) */}
@@ -516,17 +527,17 @@ const AvailableStock = () => {
         <Box display="flex" flexDirection="column" gap={0.5}>
           {/* show existing consume quantity */}
           <Typography variant="caption" color="text.secondary">
-            Current: {row.available_quantity_consume} {row.consume_unit_symbol}
+            Current: {formatQty(row.available_quantity_consume)} {row.consume_unit_symbol}
           </Typography>
 
           {/* input to update */}
-          <TextField
+          {/* <TextField
             size="small"
             placeholder="Add / Update Stock"
             InputProps={{
               endAdornment: `/${row.consume_unit_symbol}`,
             }}
-          />
+          /> */}
         </Box>
       </TableCell>
 
