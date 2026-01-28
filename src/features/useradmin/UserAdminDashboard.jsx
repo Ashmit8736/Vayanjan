@@ -66,13 +66,13 @@ const UserAdminDashboard = () => {
                 content = <NewBranch onCancel={() => setActiveView('dashboard')} />;
                 break;
 
-                case 'inventory':
-            content = <Inventory />;
-            break;
+            case 'inventory':
+                content = <Inventory />;
+                break;
 
             case 'users':
-            content = <UserManagement />;
-            break;
+                content = <UserManagement />;
+                break;
 
             case 'dashboard':
             default:
