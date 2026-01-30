@@ -137,9 +137,9 @@ const Sidebar = () => {
         </ListItemButton>
         <Collapse in={open.production}>
           <List disablePadding>
-            <SubItem to="/production/master" label="Production Master" />
-            <SubItem to="/production/execution" label="Production Execution" />
-            <SubItem to="/production/barcode" label="Barcode Generation" />
+            <SubItem to="/inventory/production" label="Production Master" />
+            <SubItem to="/inventory/production/execution" label="Production Execution" />
+            <SubItem to="/inventory/production/barcode-generation" label="Barcode Generation" />
           </List>
         </Collapse>
 
@@ -166,7 +166,7 @@ const Sidebar = () => {
               to="/inventory/masters/rawmaterials"
               label="Raw Materials"
             />
-            <SubItem to="/masters/item-recipes" label="Item Recipes" />
+            <SubItem to="/inventory/masters/itemrecipe" label="Item Recipes" />
             {/* <SubItem to="/masters/suppliers" label="Suppliers" /> */}
             {/* SUPPLIERS (NESTED) */}
             <ListItemButton
@@ -259,7 +259,7 @@ const SubItem = ({ to, label }) => (
       color: "#94A3B8",
       "&.active": {
         color: "#fff",
-        bgcolor: "#1E40AF",
+        // bgcolor: "#1E40AF",
       },
       "&:hover": {
         bgcolor: "#1E293B",

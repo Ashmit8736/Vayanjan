@@ -5,14 +5,57 @@ import {
   Button,
   Paper,
   MenuItem,
-  IconButton,
+  Dialog,
+  DialogContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
+import { useEffect, useState } from "react";
+import AddPurchaseOrder from "./AddPurchaseOrder";
+import axios from "axios";
 
 const PurchaseOrderList = () => {
+  const [openForm, setOpenForm] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchPurchaseOrders = async () => {
+  setLoading(true);
+  try {
+    const token = localStorage.getItem("authToken");
+
+    const res = await axios.get(
+      "http://localhost:5000/api/purchaseOrders/get",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (res.data.success) {
+      setOrders(res.data.data);
+    }
+  } catch (error) {
+    console.error("Failed to fetch purchase orders", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  useEffect(() => {
+    fetchPurchaseOrders();
+  }, []);
+
   return (
     <Box sx={{ p: 3 }}>
       {/* ===== HEADER ===== */}
@@ -32,6 +75,7 @@ const PurchaseOrderList = () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
+            onClick={() => setOpenForm(true)}
             sx={{
               bgcolor: "#C62828",
               textTransform: "none",
@@ -51,94 +95,90 @@ const PurchaseOrderList = () => {
         </Box>
       </Box>
 
-      {/* ===== FILTER BAR ===== */}
-      <Paper sx={{ p: 2, mb: 4 }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 2,
-            alignItems: "center",
-          }}
-        >
-          <TextField
-            label="Start Date"
-            type="date"
-            size="small"
-            InputLabelProps={{ shrink: true }}
-          />
-
-          <TextField
-            label="End Date"
-            type="date"
-            size="small"
-            InputLabelProps={{ shrink: true }}
-          />
-
-          <TextField
-            select
-            label="To"
-            size="small"
-            defaultValue="All"
-            sx={{ minWidth: 120 }}
-          >
-            <MenuItem value="All">All</MenuItem>
-            <MenuItem value="Supplier">Supplier</MenuItem>
-            <MenuItem value="Vendor">Vendor</MenuItem>
-          </TextField>
-
-          <TextField
-            label="PO Number"
-            size="small"
-          />
-
-          <Button variant="outlined" sx={{ textTransform: "none" }}>
-            More Filters
-          </Button>
-
-          <Button
-            variant="contained"
-            startIcon={<SearchIcon />}
+      {/* ===== TABLE ===== */}
+      <Paper>
+        {loading ? (
+          <Box
             sx={{
-              bgcolor: "#C62828",
-              textTransform: "none",
-              "&:hover": { bgcolor: "#B71C1C" },
+              height: "40vh",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
             }}
           >
-            Search
-          </Button>
-
-          <Button
-            variant="outlined"
-            startIcon={<ClearIcon />}
-            sx={{ textTransform: "none" }}
+            <CircularProgress />
+          </Box>
+        ) : orders.length === 0 ? (
+          <Box
+            sx={{
+              height: "40vh",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#6B7280",
+            }}
           >
-            Clear
-          </Button>
-        </Box>
+            <Typography fontWeight={600}>No Purchase Found</Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead sx={{ backgroundColor: "#F9FAFB" }}>
+                <TableRow>
+                  <TableCell><b>Purchase Date</b></TableCell>
+                  <TableCell><b>Supplier Name</b></TableCell>
+                  <TableCell><b>Company Name</b></TableCell>
+                  <TableCell><b>Grand Total</b></TableCell>
+                  <TableCell><b>Payment Status</b></TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {orders.map((row) => (
+                  <TableRow key={row.id} hover>
+                    <TableCell>
+                      {new Date(row.purchase_date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>{row.supplier_name}</TableCell>
+                    <TableCell>{row.company_name}</TableCell>
+                    <TableCell>₹ {row.grand_total}</TableCell>
+                    <TableCell
+                      sx={{
+                        color:
+                          row.payment_status === "pending"
+                            ? "orange"
+                            : "green",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {row.payment_status}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Paper>
 
-      {/* ===== EMPTY STATE ===== */}
-      <Paper
-        sx={{
-          height: "55vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          color: "#6B7280",
-        }}
+      {/* ===== ADD PURCHASE ORDER MODAL ===== */}
+      <Dialog
+        open={openForm}
+        onClose={() => setOpenForm(false)}
+        maxWidth="xl"
+        fullWidth
       >
-        <Box
-          component="img"
-          src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
-          alt="No Purchase"
-          sx={{ width: 120, mb: 2, opacity: 0.7 }}
-        />
-        <Typography fontWeight={600}>
-          No Purchase Found
-        </Typography>
-      </Paper>
+        <DialogContent dividers>
+          {/* <AddPurchaseOrder onClose={() => setOpenForm(false)} /> */}
+          <AddPurchaseOrder
+  onClose={() => {
+    setOpenForm(false);
+    fetchPurchaseOrders(); // 👈 refresh list
+  }}
+/>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
