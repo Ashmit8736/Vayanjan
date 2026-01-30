@@ -6,14 +6,14 @@ import {
   Collapse,
   Box,
   Typography,
-  Button
+  Button,
 } from "@mui/material";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import Logout from "@mui/icons-material/Logout";
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { logout } from '../../store/slices/authSlice';
+import { logout } from "../../store/slices/authSlice";
 
 const Sidebar = () => {
   const [open, setOpen] = useState({
@@ -21,11 +21,12 @@ const Sidebar = () => {
     consumption: false,
     production: false,
     reports: false,
-    masters: false
+    masters: false,
+    purchase: false,
+    suppliers: false,
   });
 
-  const toggle = (key) =>
-    setOpen({ ...open, [key]: !open[key] });
+  const toggle = (key) => setOpen({ ...open, [key]: !open[key] });
 
   // ===== LOGOUT (SAME AS OTHER DASHBOARD) =====
   const dispatch = useDispatch();
@@ -51,8 +52,8 @@ const Sidebar = () => {
           color: "#E5E7EB",
           borderRight: "1px solid #1E293B",
           display: "flex",
-          flexDirection: "column"
-        }
+          flexDirection: "column",
+        },
       }}
     >
       {/* LOGO / TITLE */}
@@ -63,8 +64,7 @@ const Sidebar = () => {
       </Box>
 
       <List sx={{ px: 1, mt: 1, flexGrow: 1 }}>
-
-        {[{ label: "Dashboard", to: "/" },
+        {/* {[{ label: "Dashboard", to: "/" },
          { label: "Purchase", to: "purchase" }].map(
           (item) => (
             <ListItemButton
@@ -76,22 +76,53 @@ const Sidebar = () => {
               <ListItemText primary={item.label} />
             </ListItemButton>
           )
-        )}
+        )} */}
+        <ListItemButton component={NavLink} to="/" sx={menuItemStyle}>
+          <ListItemText primary="Dashboard" />
+        </ListItemButton>
+
+        {/* PURCHASE */}
+        <ListItemButton onClick={() => toggle("purchase")} sx={menuItemStyle}>
+          <ListItemText primary="Purchase" />
+          {open.purchase ? <ExpandLess /> : <ExpandMore />}
+        </ListItemButton>
+
+        <Collapse in={open.purchase}>
+          <List disablePadding>
+            <SubItem
+              to="/inventory/purchase/stockpurchase"
+              label="Stock Purchase"
+            />
+            <SubItem to="/inventory/purchase/purchaseorderlist" label="Purchase Order List" />
+          </List>
+        </Collapse>
 
         {/* MANAGE STOCK */}
-        <ListItemButton onClick={() => toggle("manageStock")} sx={menuItemStyle}>
+        <ListItemButton
+          onClick={() => toggle("manageStock")}
+          sx={menuItemStyle}
+        >
           <ListItemText primary="Manage Stock" />
           {open.manageStock ? <ExpandLess /> : <ExpandMore />}
         </ListItemButton>
         <Collapse in={open.manageStock}>
           <List disablePadding>
-            <SubItem to="/inventory/managestock/availablestock" label="Available Stock" />
-            <SubItem to="/inventory/managestock/closingstock" label="Closing Stock" />
+            <SubItem
+              to="/inventory/managestock/availablestock"
+              label="Available Stock"
+            />
+            <SubItem
+              to="/inventory/managestock/closingstock"
+              label="Closing Stock"
+            />
           </List>
         </Collapse>
 
         {/* CONSUMPTION */}
-        <ListItemButton onClick={() => toggle("consumption")} sx={menuItemStyle}>
+        <ListItemButton
+          onClick={() => toggle("consumption")}
+          sx={menuItemStyle}
+        >
           <ListItemText primary="Consumption" />
           {open.consumption ? <ExpandLess /> : <ExpandMore />}
         </ListItemButton>
@@ -131,9 +162,39 @@ const Sidebar = () => {
         </ListItemButton>
         <Collapse in={open.masters}>
           <List disablePadding>
-            <SubItem to="/inventory/masters/rawmaterials" label="Raw Materials" />
+            <SubItem
+              to="/inventory/masters/rawmaterials"
+              label="Raw Materials"
+            />
             <SubItem to="/masters/item-recipes" label="Item Recipes" />
-            <SubItem to="/masters/suppliers" label="Suppliers" />
+            {/* <SubItem to="/masters/suppliers" label="Suppliers" /> */}
+            {/* SUPPLIERS (NESTED) */}
+            <ListItemButton
+              onClick={() => toggle("suppliers")}
+              sx={{
+                pl: 5,
+                py: 0.75,
+                color: "#94A3B8",
+                "&:hover": { bgcolor: "#1E293B" },
+              }}
+            >
+              <ListItemText primary="Suppliers" />
+              {open.suppliers ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+
+            <Collapse in={open.suppliers}>
+              <List disablePadding>
+                <SubItem
+                  to="/inventory/masters/suppliers/thirdparty"
+                  label="Third Party Management"
+                />
+                <SubItem
+                  to="/masters/suppliers/purchase-bill-payments"
+                  label="Purchase Bill Payments"
+                />
+              </List>
+            </Collapse>
+
             <SubItem to="/inventory/masters/units" label="Units" />
           </List>
         </Collapse>
@@ -160,8 +221,8 @@ const Sidebar = () => {
             "&:hover": {
               bgcolor: "transparent",
               color: "#FF5722",
-              "& .MuiSvgIcon-root": { color: "#FF5722" }
-            }
+              "& .MuiSvgIcon-root": { color: "#FF5722" },
+            },
           }}
         >
           Sign Out
@@ -181,11 +242,11 @@ const menuItemStyle = {
   color: "#CBD5E1",
   "&.active": {
     bgcolor: "#1E40AF",
-    color: "#fff"
+    color: "#fff",
   },
   "&:hover": {
-    bgcolor: "#1E293B"
-  }
+    bgcolor: "#1E293B",
+  },
 };
 
 const SubItem = ({ to, label }) => (
@@ -198,11 +259,11 @@ const SubItem = ({ to, label }) => (
       color: "#94A3B8",
       "&.active": {
         color: "#fff",
-        bgcolor: "#1E40AF"
+        bgcolor: "#1E40AF",
       },
       "&:hover": {
-        bgcolor: "#1E293B"
-      }
+        bgcolor: "#1E293B",
+      },
     }}
   >
     <ListItemText primary={label} />
