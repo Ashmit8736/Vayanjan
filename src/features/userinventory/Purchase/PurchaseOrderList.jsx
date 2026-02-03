@@ -126,6 +126,7 @@ const PurchaseOrderList = () => {
             <Table>
               <TableHead sx={{ backgroundColor: "#F9FAFB" }}>
                 <TableRow>
+                  <TableCell><b>Purchase Order No</b></TableCell>
                   <TableCell><b>Purchase Date</b></TableCell>
                   <TableCell><b>Supplier Name</b></TableCell>
                   <TableCell><b>Company Name</b></TableCell>
@@ -137,6 +138,8 @@ const PurchaseOrderList = () => {
               <TableBody>
                 {orders.map((row) => (
                   <TableRow key={row.id} hover>
+                    <TableCell>{row.po_number}</TableCell>
+
                     <TableCell>
                       {new Date(row.purchase_date).toLocaleDateString()}
                     </TableCell>

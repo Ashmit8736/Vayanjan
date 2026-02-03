@@ -64,19 +64,7 @@ const Sidebar = () => {
       </Box>
 
       <List sx={{ px: 1, mt: 1, flexGrow: 1 }}>
-        {/* {[{ label: "Dashboard", to: "/" },
-         { label: "Purchase", to: "purchase" }].map(
-          (item) => (
-            <ListItemButton
-              key={item.label}
-              component={NavLink}
-              to={item.to}
-              sx={menuItemStyle}
-            >
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          )
-        )} */}
+       
         <ListItemButton component={NavLink} to="/" sx={menuItemStyle}>
           <ListItemText primary="Dashboard" />
         </ListItemButton>

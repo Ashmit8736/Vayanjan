@@ -21,7 +21,8 @@ import {
     RestaurantMenu,
 } from '@mui/icons-material';
 import { login, clearError } from '@store/slices/authSlice';
-import loginImage from '../../assets/images/login.webp'; // Import the image
+import loginImage from '../../assets/images/software.png';
+// import loginImage from '../../assets/images/login.webp';
 
 const Login = () => {
     const dispatch = useDispatch();
