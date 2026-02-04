@@ -15,7 +15,9 @@ import ProductionCreate from "./Production/ProductionCreate";
 import ProductionExecution from "./Production/ProductionExecution";
 import EditProduction from "./Production/EditProduction";
 import BarcodeGeneration from "./Production/BarcodeGeneration";
-import ItemRecipe from "./Masters/ItemRecipe";
+import ItemCreation from "./ItemRecipe/ItemCreation";
+import RecipeCreation from "./ItemRecipe/RecipeCreation";
+
 
 const InventoryDashboard = () => {
   return (
@@ -35,8 +37,6 @@ const InventoryDashboard = () => {
             path="managestock/availablestock"
             element={<AvailableStock />}
           />
-          
-        <Route path="masters/itemrecipe" element={<ItemRecipe />} />
           <Route path="purchase/stockpurchase" element={<StockPurchase />} />
           <Route
             path="purchase/purchaseorderlist"
@@ -63,6 +63,14 @@ const InventoryDashboard = () => {
           <Route
             path="production/barcode-generation"
             element={<BarcodeGeneration />}
+          />
+          <Route
+            path="itemrecipe/itemcreation"
+            element={<ItemCreation />}
+          />
+          <Route
+          path="itemrecipe/recipecreation"
+          element={<RecipeCreation/>}
           />
         </Routes>
        
