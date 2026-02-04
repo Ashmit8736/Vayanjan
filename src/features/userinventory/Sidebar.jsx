@@ -24,6 +24,7 @@ const Sidebar = () => {
     masters: false,
     purchase: false,
     suppliers: false,
+    itemRecipe: false,  
   });
 
   const toggle = (key) => setOpen({ ...open, [key]: !open[key] });
@@ -154,7 +155,34 @@ const Sidebar = () => {
               to="/inventory/masters/rawmaterials"
               label="Raw Materials"
             />
-            <SubItem to="/inventory/masters/itemrecipe" label="Item Recipes" />
+            {/* <SubItem to="/inventory/masters/itemrecipe" label="Item Recipes" /> */}
+            
+            <ListItemButton
+              onClick={() => toggle("itemRecipe")}
+              sx={{
+                pl: 5,
+                py: 0.75,
+                color: "#94A3B8",
+                "&:hover": { bgcolor: "#1E293B" },
+              }}
+            >
+              <ListItemText primary="Item recipe" />
+              {open.itemRecipe ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+
+            <Collapse in={open.itemRecipe}>
+              <List disablePadding>
+                <SubItem
+                  to="/inventory/itemrecipe/itemcreation"
+                  label="Item Creation"
+                />
+                <SubItem
+                  to="/inventory/itemrecipe/recipecreation"
+                  label="Recipe Creation"
+                />
+              </List>
+            </Collapse>
+
             {/* <SubItem to="/masters/suppliers" label="Suppliers" /> */}
             {/* SUPPLIERS (NESTED) */}
             <ListItemButton
