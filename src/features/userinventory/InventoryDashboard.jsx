@@ -17,6 +17,8 @@ import EditProduction from "./Production/EditProduction";
 import BarcodeGeneration from "./Production/BarcodeGeneration";
 import ItemCreation from "./ItemRecipe/ItemCreation";
 import RecipeCreation from "./ItemRecipe/RecipeCreation";
+import Wastage from "./Consumption/Wastage";
+import PurchaseOrderReports from "./Reports/PurchaseOrderReports";
 
 
 const InventoryDashboard = () => {
@@ -51,6 +53,15 @@ const InventoryDashboard = () => {
             element={<AddSupplier />}
           />
 
+{/* CONSUMPTION */}
+<Route path="wastage" element={<Wastage />} />
+ {/* Reports */}
+
+    <Route
+  path="reports/purchase-orders/:id"
+  element={<PurchaseOrderReports />}
+/>
+
           {/* Production */}
           <Route path="production" element={<ProductionMaster />} />
           <Route path="production/create" element={<ProductionCreate />} />
@@ -73,6 +84,7 @@ const InventoryDashboard = () => {
           element={<RecipeCreation/>}
           />
         </Routes>
+        
        
       </Box>
     </Box>

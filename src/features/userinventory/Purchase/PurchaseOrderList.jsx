@@ -22,35 +22,37 @@ import ClearIcon from "@mui/icons-material/Clear";
 import { useEffect, useState } from "react";
 import AddPurchaseOrder from "./AddPurchaseOrder";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const PurchaseOrderList = () => {
   const [openForm, setOpenForm] = useState(false);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const fetchPurchaseOrders = async () => {
-  setLoading(true);
-  try {
-    const token = localStorage.getItem("authToken");
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("authToken");
 
-    const res = await axios.get(
-      "http://localhost:5000/api/purchaseOrders/get",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await axios.get(
+        "http://localhost:5000/api/purchaseOrders/get",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      }
-    );
+      );
 
-    if (res.data.success) {
-      setOrders(res.data.data);
+      if (res.data.success) {
+        setOrders(res.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch purchase orders", error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Failed to fetch purchase orders", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchPurchaseOrders();
@@ -126,12 +128,24 @@ const PurchaseOrderList = () => {
             <Table>
               <TableHead sx={{ backgroundColor: "#F9FAFB" }}>
                 <TableRow>
-                  <TableCell><b>Purchase Order No</b></TableCell>
-                  <TableCell><b>Purchase Date</b></TableCell>
-                  <TableCell><b>Supplier Name</b></TableCell>
-                  <TableCell><b>Company Name</b></TableCell>
-                  <TableCell><b>Grand Total</b></TableCell>
-                  <TableCell><b>Payment Status</b></TableCell>
+                  <TableCell>
+                    <b>Purchase Order No</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Purchase Date</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Supplier Name</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Company Name</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Grand Total</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Payment Status</b>
+                  </TableCell>
                 </TableRow>
               </TableHead>
 
@@ -143,15 +157,26 @@ const PurchaseOrderList = () => {
                     <TableCell>
                       {new Date(row.purchase_date).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>{row.supplier_name}</TableCell>
+                    {/* <TableCell>{row.supplier_name}</TableCell> */}
+                    <TableCell
+                      sx={{
+                        color: "#1E40AF",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        "&:hover": { textDecoration: "underline" },
+                      }}
+                      onClick={() =>
+                        navigate(`/inventory/reports/purchase-orders/${row.id}`)
+                      }
+                    >
+                      {row.supplier_name}
+                    </TableCell>
                     <TableCell>{row.company_name}</TableCell>
                     <TableCell>₹ {row.grand_total}</TableCell>
                     <TableCell
                       sx={{
                         color:
-                          row.payment_status === "pending"
-                            ? "orange"
-                            : "green",
+                          row.payment_status === "pending" ? "orange" : "green",
                         fontWeight: 600,
                       }}
                     >
@@ -175,11 +200,11 @@ const PurchaseOrderList = () => {
         <DialogContent dividers>
           {/* <AddPurchaseOrder onClose={() => setOpenForm(false)} /> */}
           <AddPurchaseOrder
-  onClose={() => {
-    setOpenForm(false);
-    fetchPurchaseOrders(); // 👈 refresh list
-  }}
-/>
+            onClose={() => {
+              setOpenForm(false);
+              fetchPurchaseOrders(); // 👈 refresh list
+            }}
+          />
         </DialogContent>
       </Dialog>
     </Box>
