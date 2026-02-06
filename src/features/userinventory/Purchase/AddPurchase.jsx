@@ -208,21 +208,6 @@ setPurchaseOrders(poRes.data.data || []);
   </TextField>
 </Grid>
                 <Grid item xs={4}>
-                  {/* <TextField
-                    select
-                    fullWidth
-                    label="Supplier Name *"
-                    value={form.supplier_id}
-                    onChange={(e) =>
-                      setForm({ ...form, supplier_id: e.target.value })
-                    }
-                  >
-                    {suppliers.map((s) => (
-                      <MenuItem key={s.id} value={s.id}>
-                        {s.name} ({s.company_name})
-                      </MenuItem>
-                    ))}
-                  </TextField> */}
                   <TextField
   fullWidth
   label="Supplier Name"

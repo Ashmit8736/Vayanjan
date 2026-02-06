@@ -27,28 +27,6 @@ const ThirdPartyManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ===== GET SUPPLIERS API =====
-//   const fetchSuppliers = async () => {
-//     try {
-//       setLoading(true);
-//       const res = await axios.get(
-//         "http://localhost:5000/api/suppliers/get"
-//       );
-
-//       if (res.data.success) {
-//         setSuppliers(res.data.data);
-//       }
-//     } catch (error) {
-//       console.error("Failed to fetch suppliers", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchSuppliers();
-//   }, []);
-
 const fetchSuppliers = async () => {
   try {
     setLoading(true);
