@@ -1,4 +1,6 @@
 import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 import {
   Box,
@@ -15,26 +17,59 @@ import {
 } from "@mui/material";
 
 const PurchaseOrderReports = () => {
-  const order = {
-    poNumber: "PO-1001",
-    supplier: "ABC Traders",
-    purchaseDate: "04-02-2026",
-    invoiceNumber: "INV-456",
-    paymentStatus: "Pending",
-    items: [
-      { material: "Badam", qty: 2, unit: "Kg", price: 600 },
-      { material: "Besan", qty: 5, unit: "Kg", price: 60 },
-    ],
-    tax: 200,
-    discount: 100,
+  const { id } = useParams();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  // const formattedDate = new Date(order.purchaseDate)
+  //   .toLocaleDateString("en-CA"); // YYYY-MM-DD
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
   };
 
+
+  const token = localStorage.getItem("authToken"); // 🔑 auth token
+
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/purchaseOrders/purchase-orders/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setOrder(res.data.data);
+      } catch (error) {
+        console.error("Failed to fetch Purchase Order Report", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReport();
+  }, [id, token]);
+
+  if (loading) {
+    return <Typography p={3}>Loading...</Typography>;
+  }
+
+  if (!order) {
+    return <Typography p={3}>No data found</Typography>;
+  }
+
   const subTotal = order.items.reduce(
-    (sum, i) => sum + i.qty * i.price,
+    (sum, item) => sum + item.qty * item.price,
     0
   );
+
   const grandTotal = subTotal + order.tax - order.discount;
-const { id } = useParams();
 
   return (
     <Box p={3} bgcolor="#F8FAFC">
@@ -45,7 +80,6 @@ const { id } = useParams();
             <Typography variant="h5" fontWeight={800}>
               Purchase Order Report
             </Typography>
-            
           </Grid>
           <Grid item xs={4} textAlign="right">
             <Chip
@@ -65,12 +99,21 @@ const { id } = useParams();
 
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <Typography><b>PO Number:</b> {order.poNumber}</Typography>
-            <Typography><b>Supplier:</b> {order.supplier}</Typography>
+            <Typography>
+              <b>PO Number:</b> {order.poNumber}
+            </Typography>
+            <Typography>
+              <b>Supplier:</b> {order.supplier}
+            </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography><b>Purchase Date:</b> {order.purchaseDate}</Typography>
-            <Typography><b>Invoice Number:</b> {order.invoiceNumber}</Typography>
+            <Typography>
+              <b>Purchase Date:</b> {formatDate(order.purchaseDate)}
+            </Typography>
+
+            <Typography>
+              <b>Invoice Number:</b> {order.invoiceNumber || "-"}
+            </Typography>
           </Grid>
         </Grid>
       </Paper>
@@ -96,14 +139,14 @@ const { id } = useParams();
           </TableHead>
 
           <TableBody>
-            {order.items.map((item, i) => (
-              <TableRow key={i}>
+            {order.items.map((item, index) => (
+              <TableRow key={index}>
                 <TableCell>{item.material}</TableCell>
                 <TableCell align="right">{item.qty}</TableCell>
                 <TableCell>{item.unit}</TableCell>
-                <TableCell align="right">{item.price}</TableCell>
+                <TableCell align="right">₹ {item.price}</TableCell>
                 <TableCell align="right">
-                  {item.qty * item.price}
+                  ₹ {item.qty * item.price}
                 </TableCell>
               </TableRow>
             ))}
