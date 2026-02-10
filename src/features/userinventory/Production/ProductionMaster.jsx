@@ -1,157 +1,107 @@
-import { useNavigate } from "react-router-dom";
-
+import { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Box,
   Paper,
   Typography,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Checkbox,
-  Chip,
-  IconButton,
+  Button,
   Stack
 } from "@mui/material";
-import EditOutlined from "@mui/icons-material/EditOutlined";
-import DeleteOutline from "@mui/icons-material/DeleteOutline";
-import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
-import Add from "@mui/icons-material/Add";
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const dummyData = [
-  { name: "Chandra Kala", output: "Chandra Kala", slot: "-", auto: "No" },
-  { name: "Rabdi Barfi", output: "Rabdi Barfi", slot: "-", auto: "No" },
-  { name: "Mix Dry Fruit Laddu", output: "Mix Dry Fruit Laddu", slot: "-", auto: "No" },
-  { name: "Besan Laddu", output: "Besan Laddu", slot: "-", auto: "No" },
-  { name: "Atta Gond Laddu", output: "Atta Gond Laddu", slot: "-", auto: "No" },
-  { name: "Jalebi", output: "Jalebi", slot: "-", auto: "No" },
-  { name: "Sohan Papdi", output: "Sohan Papdi", slot: "-", auto: "No" },
-  { name: "Patisha", output: "Patisha", slot: "-", auto: "No" },
-  { name: "Coconut Barfi", output: "Coconut Barfi", slot: "-", auto: "No" }
-];
+/* 🔹 AXIOS INSTANCE */
+const api = axios.create({
+  baseURL: "http://localhost:5000/api",
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 const ProductionMaster = () => {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
-const navigate = useNavigate();
+  const [rows, setRows] = useState([]);
+  const navigate = useNavigate();
+  const branch_id = 1;
+
+  useEffect(() => {
+    api
+      .get(`/production/list?branch_id=${branch_id}`)
+      .then((res) => setRows(res.data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  const showUTCTime = (date) => {
+    const d = new Date(date);
+
+    return d.toLocaleString("en-GB", {
+      timeZone: "UTC",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  };
 
   return (
     <Box p={2}>
-      {/* HEADER */}
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography fontSize={20} fontWeight={700}>
           Production List
         </Typography>
 
-        <Stack direction="row" spacing={1}>
-         <Button
-  variant="contained"
-  startIcon={<Add />}
-  onClick={() => navigate("/inventory/production/create")}
-  sx={{ bgcolor: "#d32f2f", "&:hover": { bgcolor: "#b71c1c" } }}
->
-  Create New
-</Button>
-
-          <Button variant="outlined">Action</Button>
-          <Button variant="outlined">Files</Button>
-        </Stack>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={() => navigate("/production/execute")}
+        >
+          New Production
+        </Button>
       </Stack>
 
-      {/* FILTER BAR */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Stack direction="row" spacing={2} alignItems="flex-end">
-          <TextField
-            label="Search Production"
-            size="small"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-
-          <Box>
-            <Typography fontSize={12} mb={0.5}>
-              Category
-            </Typography>
-            <Select
-              size="small"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              sx={{ minWidth: 120 }}
-            >
-              <MenuItem value="All">All</MenuItem>
-              <MenuItem value="Sweets">Sweets</MenuItem>
-              <MenuItem value="Namkeen">Namkeen</MenuItem>
-            </Select>
-          </Box>
-
-          <Button variant="outlined" sx={{ borderColor: "#d32f2f", color: "#d32f2f" }}>
-            Search
-          </Button>
-          <Button variant="outlined">Clear</Button>
-        </Stack>
-      </Paper>
-
-      {/* TABLE */}
       <TableContainer component={Paper}>
         <Table>
-          <TableHead sx={{ bgcolor: "#f1f6ff" }}>
+          <TableHead>
             <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox />
-              </TableCell>
-              <TableCell><b>Production Name</b></TableCell>
-              <TableCell><b>Final Output</b></TableCell>
-              <TableCell><b>Time Slot</b></TableCell>
-              <TableCell><b>Auto Production</b></TableCell>
-              <TableCell><b>Action</b></TableCell>
+              <TableCell>Item</TableCell>
+              <TableCell>Quantity</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Date</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {dummyData.map((row, i) => (
-              <TableRow key={i}>
-                <TableCell padding="checkbox">
-                  <Checkbox />
-                </TableCell>
-                <TableCell>{row.name}</TableCell>
+            {rows.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell>{r.item_name}</TableCell>
                 <TableCell>
-                  <Chip label={row.output} size="small" />
+                  {r.produce_quantity} {r.unit_symbol}
                 </TableCell>
-                <TableCell>{row.slot}</TableCell>
-                <TableCell>{row.auto}</TableCell>
+                <TableCell>{r.status}</TableCell>
+                {/* <TableCell>
+                  {new Date(r.produced_at).toLocaleString()}
+                </TableCell> */}
                 <TableCell>
-                   <IconButton
-    size="small"
-    onClick={() => navigate(`/inventory/production/edit/${i}`)}
-  >
-    <EditOutlined />
-  </IconButton>
-                  <IconButton size="small"><DeleteOutline /></IconButton>
-                  <IconButton size="small"><DescriptionOutlined /></IconButton>
+                  {showUTCTime(r.produced_at)}
                 </TableCell>
+
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
-
-      {/* FOOTER */}
-      <Stack direction="row" justifyContent="space-between" mt={2}>
-       { /*<Typography fontSize={13}>Showing 1 to 20 of 21 records</Typography>*/}
-        <Stack direction="row" spacing={1}>
-          {/* <Button size="small" variant="contained">1</Button>
-          <Button size="small" variant="outlined">2</Button> */}
-          <Button size="small" variant="outlined">Next</Button>
-          <Button size="small" variant="outlined">Last</Button>
-        </Stack>
-      </Stack>
     </Box>
   );
 };

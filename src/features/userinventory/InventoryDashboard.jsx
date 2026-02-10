@@ -19,6 +19,9 @@ import ItemCreation from "./ItemRecipe/ItemCreation";
 import RecipeCreation from "./ItemRecipe/RecipeCreation";
 import Wastage from "./Consumption/Wastage";
 import PurchaseOrderReports from "./Reports/PurchaseOrderReports";
+import StockList from "./Reports/StockList";
+import StockReport from "./Reports/StockReport";
+import CurrentStock from "./Reports/CurrentStock";
 
 
 const InventoryDashboard = () => {
@@ -57,10 +60,14 @@ const InventoryDashboard = () => {
 <Route path="wastage" element={<Wastage />} />
  {/* Reports */}
 
+<Route path="reports/current-stock" element={<CurrentStock />} />
+
     <Route
   path="reports/purchase-orders/:id"
   element={<PurchaseOrderReports />}
 />
+<Route path="reports/stock" element={<StockList />} />
+<Route path="reports/stock-report/:poNumber" element={<StockReport />} />
 
           {/* Production */}
           <Route path="production" element={<ProductionMaster />} />
