@@ -1,5 +1,5 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Box,
   Paper,
@@ -8,274 +8,201 @@ import {
   Button,
   Divider,
   Stack,
-  Select,
-  MenuItem,
-  Checkbox,
-  Switch,
-  InputAdornment
+  Checkbox
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { useNavigate } from "react-router-dom";
 
-const data = [
-  "Chandra Kala",
-  "Rabdi Barfi",
-  "Mix Dry Fruit Laddu",
-  "Besan Laddu",
-  "Atta Gond Laddu",
-  "Jalebi",
-  "Sohan Papdi"
-];
+/* ================= AXIOS ================= */
+const api = axios.create({
+  baseURL: "http://localhost:5000/api",
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+/* ================= JWT DECODE (NO LIB) ================= */
+const decodeJWT = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    return JSON.parse(atob(payload));
+  } catch {
+    return null;
+  }
+};
 
 const ProductionExecution = () => {
-  const [qty, setQty] = useState({});
+  const [items, setItems] = useState([]);
   const [checked, setChecked] = useState({});
-  const [search, setSearch] = useState("");
-  const [productionItems, setProductionItems] = useState([]);
+  const [qty, setQty] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // 🔍 SEARCH FILTER
-  const filteredData = data.filter((item) =>
-    item.toLowerCase().includes(search.toLowerCase())
-  );
+  const navigate = useNavigate();
 
-  // 📤 SEND TO PRODUCTION
-  const handleSendToProduction = () => {
-    const selected = Object.keys(checked)
-      .filter((item) => checked[item])
-      .map((item) => ({
-        name: item,
-        qty: qty[item] || 0
-      }));
+  /* 🔥 FIX: branch_id & user_id FROM TOKEN */
+  const token = localStorage.getItem("authToken");
+  const decoded = token ? decodeJWT(token) : null;
 
-    setProductionItems(selected);
-  };
-    // ✅ ADD THIS
-  const handleCancel = () => {
-    setChecked({});
-    setQty({});
-    setSearch("");
-    setProductionItems([]);
+  const branch_id = decoded?.branch_id ?? null;
+  const created_by = decoded?.id ?? null;
+
+  console.log("🧪 ProductionExecution → branch_id:", branch_id, "user_id:", created_by);
+
+  /* ================= LOAD ITEMS ================= */
+  useEffect(() => {
+    if (!branch_id) {
+      alert("Session expired. Please login again.");
+      navigate("/login");
+      return;
+    }
+
+    api
+      .get("/item/list", { params: { branch_id } })
+      .then((res) => {
+        if (Array.isArray(res.data.data)) {
+          setItems(res.data.data);
+        } else {
+          setItems([]);
+        }
+      })
+      .catch(() => setItems([]));
+  }, [branch_id, navigate]);
+
+  /* ================= HANDLE PRODUCTION ================= */
+  const handleConvertToProduction = async () => {
+    if (!branch_id || !created_by) {
+      alert("Session expired. Please login again.");
+      navigate("/login");
+      return;
+    }
+
+    const selectedItems = items.filter(
+      (i) => checked[i.id] && Number(qty[i.id]) > 0
+    );
+
+    if (selectedItems.length === 0) {
+      alert("Select item and valid quantity");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      for (const item of selectedItems) {
+        const produceQty = Number(qty[item.id]);
+
+        if (!item.recipe_id || !item.item_unit_id) {
+          throw new Error(`Recipe not configured for ${item.name}`);
+        }
+
+        if (!produceQty || produceQty <= 0 || Number.isNaN(produceQty)) {
+          throw new Error(`Invalid quantity for ${item.name}`);
+        }
+
+        const payload = {
+          branch_id,
+          item_id: item.id,
+          recipe_id: item.recipe_id,
+          produce_quantity: produceQty,
+          produce_unit_id: item.item_unit_id,
+          created_by
+        };
+
+        console.log("✅ PRODUCTION PAYLOAD:", payload);
+
+        await api.post("/production/create", payload);
+      }
+
+      alert("Production completed successfully");
+      navigate("/inventory/production");
+
+    } catch (error) {
+      console.error("PRODUCTION ERROR:", error);
+      alert(
+        error?.response?.data?.error ||
+        error.message ||
+        "Production failed"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Box p={2} bgcolor="#fafafa">
-      {/* TOP BAR */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Box display="flex" justifyContent="space-between">
-          <Box display="flex" gap={1}>
-            <Select size="small" value="Direct Product">
-              <MenuItem value="Direct Product">Direct Product</MenuItem>
-            </Select>
+    <Box p={2}>
+      <Typography fontSize={20} fontWeight={700} mb={2}>
+        Production Execution
+      </Typography>
 
-            <Button size="small" variant="outlined">
-              More Filters
-            </Button>
-
-            <Button size="small" variant="outlined" color="error">
-              Search
-            </Button>
-          </Box>
-
-          <Box display="flex" gap={1}>
-            <Button size="small" variant="outlined">
-              Production Via Excel
-            </Button>
-            <Button size="small" variant="outlined">
-              Generate Production Plan
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
-
-      {/* MAIN */}
       <Paper>
-        <Box display="flex">
-          {/* LEFT PANEL */}
-          <Box width="55%" p={2} borderRight="1px solid #eee">
+        <Box p={2}>
+          <Typography fontWeight={600} mb={1}>
+            Select Items
+          </Typography>
+
+          <Divider />
+
+          {items.length === 0 && (
+            <Typography align="center" color="text.secondary" mt={2}>
+              No items found
+            </Typography>
+          )}
+
+          {items.map((item) => (
             <Box
+              key={item.id}
               display="flex"
-              justifyContent="space-between"
               alignItems="center"
-              mb={1}
+              py={1}
             >
-              <Typography fontWeight={600}>
-                Select Production Processes
-              </Typography>
+              <Checkbox
+                checked={!!checked[item.id]}
+                onChange={(e) =>
+                  setChecked((prev) => ({
+                    ...prev,
+                    [item.id]: e.target.checked
+                  }))
+                }
+              />
+
+              <Typography flex={1}>{item.name}</Typography>
 
               <TextField
                 size="small"
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" />
-                    </InputAdornment>
-                  )
-                }}
+                type="number"
+                placeholder={`Qty (${item.item_unit_symbol || "-"})`}
+                value={qty[item.id] ?? ""}
+                onChange={(e) =>
+                  setQty((prev) => ({
+                    ...prev,
+                    [item.id]: Number(e.target.value)
+                  }))
+                }
+                sx={{ width: 140 }}
               />
             </Box>
-
-            <Divider />
-
-            {/* HEADER */}
-            <Box display="flex" alignItems="center" py={1}>
-              <Checkbox disabled />
-              <Typography flex={1} fontSize={13}>
-                Production Process Name
-              </Typography>
-              <Typography fontSize={13}>Quantity</Typography>
-            </Box>
-
-            <Divider />
-
-            {/* LIST */}
-            <Box sx={{ maxHeight: 360, overflowY: "auto" }}>
-              {filteredData.map((item) => (
-                <Box
-                  key={item}
-                  display="flex"
-                  alignItems="center"
-                  py={1}
-                >
-                  <Checkbox
-                    checked={checked[item] || false}
-                    onChange={(e) =>
-                      setChecked({
-                        ...checked,
-                        [item]: e.target.checked
-                      })
-                    }
-                  />
-
-                  <Typography flex={1} fontSize={14}>
-                    {item}
-                  </Typography>
-
-                  <TextField
-                    size="small"
-                    placeholder="0"
-                    value={qty[item] || ""}
-                    onChange={(e) =>
-                      setQty({
-                        ...qty,
-                        [item]: e.target.value
-                      })
-                    }
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          / Kg <ChevronRightIcon fontSize="small" />
-                        </InputAdornment>
-                      )
-                    }}
-                    sx={{ width: 140 }}
-                  />
-                </Box>
-              ))}
-
-              {filteredData.length === 0 && (
-                <Typography
-                  fontSize={13}
-                  color="text.secondary"
-                  align="center"
-                  mt={2}
-                >
-                  No Product Found
-                </Typography>
-              )}
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Button
-              variant="outlined"
-              color="error"
-              fullWidth
-              onClick={handleSendToProduction}
-            >
-              Send Selected To Production
-            </Button>
-          </Box>
-
-          {/* RIGHT PANEL */}
-          <Box width="45%" p={2}>
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              mb={1}
-            >
-              <Typography fontWeight={600}>
-                Ready For Production
-              </Typography>
-
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography fontSize={13}>With Price</Typography>
-                <Switch />
-              </Box>
-            </Box>
-
-            <Divider />
-
-            {productionItems.length === 0 ? (
-              <Box
-                height={400}
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                color="text.secondary"
-              >
-                <Typography>No Data Available</Typography>
-              </Box>
-            ) : (
-              <Box mt={2}>
-                {productionItems.map((item) => (
-                  <Paper
-                    key={item.name}
-                    variant="outlined"
-                    sx={{ p: 1.5, mb: 1 }}
-                  >
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                    >
-                      <Typography fontWeight={500}>
-                        {item.name}
-                      </Typography>
-                      <Typography color="text.secondary">
-                        {item.qty} Kg
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                ))}
-              </Box>
-            )}
-          </Box>
+          ))}
         </Box>
 
-        {/* FOOTER */}
         <Divider />
 
-        <Box
-          display="flex"
-          justifyContent="flex-end"
-          gap={1}
-          p={2}
-        >
-         <Button variant="outlined" onClick={handleCancel}>
-  Cancel
-</Button>
-
-          <Button variant="contained" color="error">
-            Convert To Production
+        <Stack direction="row" justifyContent="flex-end" p={2}>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={loading}
+            onClick={handleConvertToProduction}
+          >
+            {loading ? "Processing..." : "Convert To Production"}
           </Button>
-        </Box>
+        </Stack>
       </Paper>
     </Box>
   );
 };
 
 export default ProductionExecution;
-

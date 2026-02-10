@@ -17,7 +17,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const AddPurchase = ({ open, onClose, purchaseOrderId = 19 }) => {
+const AddPurchase = ({ open, onClose }) => {
   /* ================= MASTER DATA ================= */
   const [suppliers, setSuppliers] = useState([]);
   const [rawMaterials, setRawMaterials] = useState([]);
@@ -30,7 +30,7 @@ const AddPurchase = ({ open, onClose, purchaseOrderId = 19 }) => {
     supplier_id: "",
     invoice_date: "",
     invoice_number: "",
-     purchase_order_id: "", 
+    purchase_order_id: "",
   });
 
   const [rows, setRows] = useState([
@@ -56,20 +56,14 @@ const AddPurchase = ({ open, onClose, purchaseOrderId = 19 }) => {
       setLoading(true);
       const token = localStorage.getItem("authToken");
       const headers = { Authorization: `Bearer ${token}` };
-
-      // const [supRes, rawRes, unitRes] = await Promise.all([
-      //   axios.get("http://localhost:5000/api/suppliers/get", { headers }),
-      //   axios.get("http://localhost:5000/api/raw/get", { headers }),
-      //   axios.get("http://localhost:5000/api/units/getUnit"),
-      // ]);
       const [supRes, rawRes, unitRes, poRes] = await Promise.all([
-  axios.get("http://localhost:5000/api/suppliers/get", { headers }),
-  axios.get("http://localhost:5000/api/raw/get", { headers }),
-  axios.get("http://localhost:5000/api/units/getUnit"),
-  axios.get("http://localhost:5000/api/purchaseOrders/get", { headers }),
-]);
+        axios.get("http://localhost:5000/api/suppliers/get", { headers }),
+        axios.get("http://localhost:5000/api/raw/get", { headers }),
+        axios.get("http://localhost:5000/api/units/getUnit"),
+        axios.get("http://localhost:5000/api/purchaseOrders/get", { headers }),
+      ]);
 
-setPurchaseOrders(poRes.data.data || []);
+      setPurchaseOrders(poRes.data.data || []);
 
       setSuppliers(supRes.data.data || []);
       setRawMaterials(rawRes.data.data || rawRes.data || []);
@@ -108,13 +102,18 @@ setPurchaseOrders(poRes.data.data || []);
     setRows(updated);
   };
 
-  /* ================= SAVE (POST API) ================= */
+
   const handleSave = async () => {
     try {
       const token = localStorage.getItem("authToken");
 
+      if (!form.purchase_order_id) {
+        alert("Please select a Purchase Order");
+        return;
+      }
+
       const payload = {
-        purchase_order_id: purchaseOrderId,
+        purchase_order_id: Number(form.purchase_order_id),
         items: rows.map((r) => ({
           raw_material_id: Number(r.raw_material_id),
           quantity: Number(r.quantity),
@@ -126,6 +125,8 @@ setPurchaseOrders(poRes.data.data || []);
           item_discount: Number(r.item_discount || 0),
         })),
       };
+
+      console.log("🚀 FINAL PAYLOAD:", payload); // DEBUG
 
       await axios.post(
         "http://localhost:5000/api/stockPurchaseItems/stock-purchase-items",
@@ -139,21 +140,23 @@ setPurchaseOrders(poRes.data.data || []);
       alert("Failed to save purchase");
     }
   };
-  const handlePoChange = (poId) => {
-  const selectedPO = purchaseOrders.find(
-    (po) => po.id === Number(poId)
-  );
 
-  if (selectedPO) {
-    setForm({
-      ...form,
-      purchase_order_id: poId,
-      supplier_id: selectedPO.supplier_name, // agar supplier_id ho backend me
-      invoice_number: selectedPO.invoice_number || "",
-      invoice_date: selectedPO.purchase_date?.slice(0, 10),
-    });
+
+  const handlePoChange = (poId) => {
+    const selectedPO = purchaseOrders.find(
+      (po) => po.id === Number(poId)
+    );
+
+    if (selectedPO) {
+      setForm({
+        ...form,
+        purchase_order_id: poId,
+        supplier_id: selectedPO.supplier_name, // agar supplier_id ho backend me
+        invoice_number: selectedPO.invoice_number || "",
+        invoice_date: selectedPO.purchase_date?.slice(0, 10),
+      });
+    }
   }
-}
 
   /* ================= UI ================= */
   return (
@@ -193,27 +196,27 @@ setPurchaseOrders(poRes.data.data || []);
 
               <Grid container spacing={2}>
                 <Grid item xs={4}>
-  <TextField
-    select
-    fullWidth
-    label="PO Number *"
-    value={form.purchase_order_id}
-    onChange={(e) => handlePoChange(e.target.value)}
-  >
-    {purchaseOrders.map((po) => (
-      <MenuItem key={po.id} value={po.id}>
-        {po.po_number}
-      </MenuItem>
-    ))}
-  </TextField>
-</Grid>
+                  <TextField
+                    select
+                    fullWidth
+                    label="PO Number *"
+                    value={form.purchase_order_id}
+                    onChange={(e) => handlePoChange(e.target.value)}
+                  >
+                    {purchaseOrders.map((po) => (
+                      <MenuItem key={po.id} value={po.id}>
+                        {po.po_number}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
                 <Grid item xs={4}>
                   <TextField
-  fullWidth
-  label="Supplier Name"
-  value={form.supplier_id}
-  InputProps={{ readOnly: true }}
-/>
+                    fullWidth
+                    label="Supplier Name"
+                    value={form.supplier_id}
+                    InputProps={{ readOnly: true }}
+                  />
                 </Grid>
 
                 <Grid item xs={4}>
@@ -400,4 +403,4 @@ setPurchaseOrders(poRes.data.data || []);
   );
 };
 
-export default AddPurchase;
+export default AddPurchase; 

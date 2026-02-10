@@ -140,6 +140,7 @@ const Sidebar = () => {
         <Collapse in={open.reports}>
           <List disablePadding>
             <SubItem to="/inventory/reports/current-stock" label="Current Stock" />
+            <SubItem to="/inventory/reports/stock" label="Stock List" />
             <SubItem to="/inventory/reports/summary" label="Stock Summary" />
           </List>
         </Collapse>
