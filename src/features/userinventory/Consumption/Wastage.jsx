@@ -107,7 +107,7 @@ const Wastage = () => {
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Typography>Highest Wastage Item</Typography>
+              <Typography> Highest Wastage Item </Typography>
               <Typography variant="h6">{summary.highest}</Typography>
             </CardContent>
           </Card>
