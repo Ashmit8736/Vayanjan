@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import UnitManagement from "./Masters/UnitManagement";
 import RawMaterials from "./Masters/RawMaterials";
 import AvailableStock from "./ManageStock/AvailableStock";
+import ClosingStock from "./ManageStock/ClosingStock";
 import Dashboard from "./Dashboard";
 import StockPurchase from "./Purchase/StockPurchase";
 import PurhaseOrderList from "./Purchase/PurchaseOrderList";
@@ -22,6 +23,7 @@ import PurchaseOrderReports from "./Reports/PurchaseOrderReports";
 import StockList from "./Reports/StockList";
 import StockReport from "./Reports/StockReport";
 import CurrentStock from "./Reports/CurrentStock";
+import StockSummary from "./Reports/StockSummary";
 
 
 const InventoryDashboard = () => {
@@ -31,7 +33,7 @@ const InventoryDashboard = () => {
       <Sidebar />
 
       {/* RIGHT CONTENT */}
-      <Box sx={{ flexGrow: 1 }}>
+      <Box sx={{ flexGrow: 1, minWidth: 0, overflowX: "hidden", overflowY: "auto" }}>
         <Routes>
           {/* 👇 YAHI SE UNIT PAGE OPEN HOTA HAI */}
 
@@ -41,6 +43,10 @@ const InventoryDashboard = () => {
           <Route
             path="managestock/availablestock"
             element={<AvailableStock />}
+          />
+          <Route
+            path="managestock/closingstock"
+            element={<ClosingStock />}
           />
           <Route path="purchase/stockpurchase" element={<StockPurchase />} />
           <Route
@@ -61,6 +67,7 @@ const InventoryDashboard = () => {
  {/* Reports */}
 
 <Route path="reports/current-stock" element={<CurrentStock />} />
+<Route path="reports/summary" element={<StockSummary />} />
 
     <Route
   path="reports/purchase-orders/:id"

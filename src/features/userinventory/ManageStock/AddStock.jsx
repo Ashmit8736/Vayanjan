@@ -73,6 +73,18 @@ const fetchRawMaterials = async () => {
     setRows(updated);
   };
 
+  const handleMaterialChange = (index, materialId) => {
+    const updated = [...rows];
+    updated[index].material = materialId;
+    const selectedMat = rawMaterials.find((rm) => rm.id === Number(materialId));
+    if (selectedMat) {
+      updated[index].unit = selectedMat.purchase_unit_id || "";
+    } else {
+      updated[index].unit = "";
+    }
+    setRows(updated);
+  };
+
 const handleSave = async () => {
   try {
     const token = localStorage.getItem("authToken");
@@ -152,7 +164,7 @@ const handleSave = async () => {
           <Box />
         </Box>
 
-        <Divider />
+      <Divider />
 
         {rows.map((row, index) => (
           <Box
@@ -169,7 +181,7 @@ const handleSave = async () => {
               displayEmpty
               value={row.material}
               onChange={(e) =>
-                handleChange(index, "material", e.target.value)
+                handleMaterialChange(index, e.target.value)
               }
             >
               <MenuItem value="">Select Raw Material</MenuItem>
@@ -189,11 +201,12 @@ const handleSave = async () => {
               }
             />
 
-            {/* ✅ UNIT NAME */}
+            {/* ✅ UNIT NAME (DISABLED & PRE-FILLED) */}
             <Select
               size="small"
               displayEmpty
               value={row.unit}
+              disabled
               onChange={(e) =>
                 handleChange(index, "unit", e.target.value)
               }

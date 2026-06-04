@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -14,13 +14,39 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 
+const RANDOM_CLIENTS = [
+  "Restaurant A", "Cafe B", "Hotel C", "Cloud Kitchen",
+  "Shivam Sharma", "Ansh Agarwal", "Uncle ji", "Vikas Sharma",
+  "Paras Agarwal", "Mukesh Trivedi", "Pranav Agarwal", "Arpit Sahu",
+  "Jagriti Singh", "Harsh Agarwal", "Rohit Verma", "Shiv Kumar"
+];
+
 const CreateInvoice = () => {
   const [customer, setCustomer] = useState("");
-  const [invoiceNo, setInvoiceNo] = useState("INV-1001");
+  const [invoiceNo, setInvoiceNo] = useState(`INV-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [availableItems, setAvailableItems] = useState([]);
 
   const [items, setItems] = useState([
     { name: "", qty: 1, price: 0 },
   ]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+
+    fetch("http://localhost:5000/api/item/list", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          setAvailableItems(res.data);
+        }
+      })
+      .catch(err => console.error("Error fetching items in CreateInvoice:", err));
+  }, []);
 
   const addItem = () => {
     setItems([...items, { name: "", qty: 1, price: 0 }]);
@@ -38,6 +64,46 @@ const CreateInvoice = () => {
     setItems(updated);
   };
 
+  const handleItemSelect = (index, itemName) => {
+    const updated = [...items];
+    updated[index].name = itemName;
+    const selectedItem = availableItems.find(i => i.name === itemName);
+    if (selectedItem) {
+      updated[index].price = Number(selectedItem.selling_price || 0);
+    }
+    setItems(updated);
+  };
+
+  const handleGenerateRandom = () => {
+    const randomClient = RANDOM_CLIENTS[Math.floor(Math.random() * RANDOM_CLIENTS.length)];
+    setCustomer(randomClient);
+
+    const generatedInv = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+    setInvoiceNo(generatedInv);
+
+    // Pick 1-3 random items from availableItems or fallback list
+    const itemsSource = availableItems.length > 0 ? availableItems : [
+      { name: "Samosa", selling_price: 20 },
+      { name: "Pakodi", selling_price: 20 },
+      { name: "Gunjiya", selling_price: 400 },
+      { name: "oil", selling_price: 100 }
+    ];
+
+    const count = Math.floor(Math.random() * 3) + 1;
+    const generatedItems = [];
+    for (let i = 0; i < count; i++) {
+      const selected = itemsSource[Math.floor(Math.random() * itemsSource.length)];
+      const qty = Math.floor(Math.random() * 5) + 1;
+      generatedItems.push({
+        name: selected.name,
+        qty,
+        price: Number(selected.selling_price || selected.price || 0)
+      });
+    }
+    setItems(generatedItems);
+    alert("⚡ Form populated with random invoice details! Click 'Generate Bill' to save.");
+  };
+
   const subtotal = items.reduce(
     (acc, item) => acc + item.qty * item.price,
     0
@@ -45,6 +111,64 @@ const CreateInvoice = () => {
 
   const gst = subtotal * 0.18;
   const total = subtotal + gst;
+
+  const handleSaveInvoice = () => {
+    if (!customer) {
+      alert("Customer Name is required");
+      return;
+    }
+
+    const validItems = items.filter(i => i.name !== "" && i.qty > 0);
+    if (validItems.length === 0) {
+      alert("Please add at least one item");
+      return;
+    }
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      alert("Authentication token missing. Please log in again.");
+      return;
+    }
+
+    const payload = {
+      id: invoiceNo,
+      client_name: customer,
+      subtotal: Number(subtotal.toFixed(2)),
+      gst: Number(gst.toFixed(2)),
+      total: Number(total.toFixed(2)),
+      items: validItems.map(item => ({
+        name: item.name,
+        qty: Number(item.qty),
+        price: Number(item.price)
+      }))
+    };
+
+    fetch("http://localhost:5000/api/invoices/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => { throw new Error(err.message || "Failed to save invoice"); });
+        }
+        return res.json();
+      })
+      .then(() => {
+        alert(`Invoice ${invoiceNo} Generated, Stock Consumed & Saved successfully! ✅`);
+        // Reset Form
+        setCustomer("");
+        setInvoiceNo(`INV-${Math.floor(1000 + Math.random() * 9000)}`);
+        setItems([{ name: "", qty: 1, price: 0 }]);
+      })
+      .catch(err => {
+        console.error("❌ Save invoice error:", err);
+        alert(`Failed to save invoice: ${err.message}`);
+      });
+  };
 
   return (
     <Box p={3} bgcolor="#F1F5F9" minHeight="100vh">
@@ -59,14 +183,26 @@ const CreateInvoice = () => {
           🧾 Create Invoice
         </Typography>
 
-        <Button
-          variant="contained"
-          color="success"
-          startIcon={<ReceiptLongIcon />}
-          sx={{ borderRadius: 3, fontWeight: 700 }}
-        >
-          Generate Bill
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={handleGenerateRandom}
+            sx={{ borderRadius: 3, fontWeight: 800, borderWidth: 2, "&:hover": { borderWidth: 2 } }}
+          >
+            ⚡ Generate Random
+          </Button>
+
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<ReceiptLongIcon />}
+            onClick={handleSaveInvoice}
+            sx={{ borderRadius: 3, fontWeight: 700 }}
+          >
+            Generate Bill
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={2}>
@@ -114,13 +250,21 @@ const CreateInvoice = () => {
               <Grid container spacing={2} key={index} mb={1}>
                 <Grid item xs={12} md={4}>
                   <TextField
+                    select
                     label="Item Name"
                     fullWidth
                     value={item.name}
                     onChange={(e) =>
-                      handleChange(index, "name", e.target.value)
+                      handleItemSelect(index, e.target.value)
                     }
-                  />
+                  >
+                    <MenuItem value="">Select Item</MenuItem>
+                    {availableItems.map((ai) => (
+                      <MenuItem key={ai.id} value={ai.name}>
+                        {ai.name} (₹{ai.selling_price})
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 </Grid>
 
                 <Grid item xs={4} md={2}>
@@ -214,6 +358,7 @@ const CreateInvoice = () => {
               fullWidth
               variant="contained"
               color="success"
+              onClick={handleSaveInvoice}
               sx={{
                 mt: 3,
                 borderRadius: 3,

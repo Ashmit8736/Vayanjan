@@ -1,9 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   TextField,
   MenuItem,
   CircularProgress,
+  Button,
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 
 const AddItemCreation = ({ onSuccess }) => {
@@ -11,9 +17,38 @@ const AddItemCreation = ({ onSuccess }) => {
     name: "",
     category: "Sweet",
     selling_price: "",
+    item_unit_id: "",
   });
 
+  const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Add unit state
+  const [unitOpen, setUnitOpen] = useState(false);
+  const [newUnit, setNewUnit] = useState({ name: "", symbol: "" });
+  const [unitSaving, setUnitSaving] = useState(false);
+
+  // Fetch all units from backend
+  const fetchUnits = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await fetch("http://localhost:5000/api/units/getUnit", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const json = await res.json();
+      if (json.success) {
+        setUnits(json.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch units", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnits();
+  }, []);
 
   /* ================= HANDLE CHANGE ================= */
   const handleChange = (e) => {
@@ -21,65 +56,116 @@ const AddItemCreation = ({ onSuccess }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-
-  const handleSave = async () => {
-  if (!formData.name || !formData.category || !formData.selling_price) {
-    alert("Please fill all fields");
-    return;
-  }
-
-  const token = localStorage.getItem("authToken");
-
-  if (!token) {
-    alert("Token missing. Please login again.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const res = await fetch("http://localhost:5000/api/item/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        name: formData.name,
-        category: formData.category,
-        selling_price: Number(formData.selling_price),
-      }),
-    });
-
-    const result = await res.json();
-    console.log("CREATE ITEM RESPONSE:", result);
-
-    if (!res.ok) {
-      alert(result.message || "Failed to create item");
+  /* ================= SAVE DYNAMIC UNIT ================= */
+  const handleAddUnit = async () => {
+    if (!newUnit.name || !newUnit.symbol) {
+      alert("Please fill all unit fields");
       return;
     }
 
-    // ✅ SUCCESS FLOW (ONLY ADDITIONS)
-    alert("Item created successfully ✅");
+    try {
+      setUnitSaving(true);
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        alert("Token missing. Please login again.");
+        return;
+      }
 
-    // 🔄 FORM RESET
-    setFormData({
-      name: "",
-      category: "Sweet",
-      selling_price: "",
-    });
+      const res = await fetch("http://localhost:5000/api/units/addUnit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          unit_name: newUnit.name,
+          unit_symbol: newUnit.symbol,
+        }),
+      });
 
-    // 🔔 PARENT REFRESH + POPUP CLOSE
-    if (typeof onSuccess === "function") {
-      onSuccess();
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Failed to create unit");
+        return;
+      }
+
+      alert("Unit created successfully ✅");
+      const addedUnit = {
+        id: data.unit_id,
+        unit_name: newUnit.name,
+        unit_symbol: newUnit.symbol,
+      };
+
+      setUnits((prev) => [...prev, addedUnit]);
+      setFormData((prev) => ({ ...prev, item_unit_id: data.unit_id }));
+      setNewUnit({ name: "", symbol: "" });
+      setUnitOpen(false);
+    } catch (err) {
+      console.error("Add unit error:", err);
+      alert("Error adding unit");
+    } finally {
+      setUnitSaving(false);
     }
-  } catch (error) {
-    console.error("Create item error:", error);
-    alert("Server error");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  /* ================= SAVE ITEM ================= */
+  const handleSave = async () => {
+    if (!formData.name || !formData.category || !formData.selling_price) {
+      alert("Please fill name, category and price");
+      return;
+    }
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      alert("Token missing. Please login again.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await fetch("http://localhost:5000/api/item/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          category: formData.category,
+          selling_price: Number(formData.selling_price),
+          item_unit_id: formData.item_unit_id ? Number(formData.item_unit_id) : null,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        alert(result.message || "Failed to create item");
+        return;
+      }
+
+      alert("Item created successfully ✅");
+
+      // 🔄 FORM RESET
+      setFormData({
+        name: "",
+        category: "Sweet",
+        selling_price: "",
+        item_unit_id: "",
+      });
+
+      if (typeof onSuccess === "function") {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error("Create item error:", error);
+      alert("Server error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Box display="flex" flexDirection="column" gap={2}>
@@ -89,7 +175,7 @@ const AddItemCreation = ({ onSuccess }) => {
         name="name"
         value={formData.name}
         onChange={handleChange}
-        placeholder="Enter item name"
+        placeholder="Enter item name (e.g. Balushahi)"
         fullWidth
       />
 
@@ -108,6 +194,42 @@ const AddItemCreation = ({ onSuccess }) => {
         <MenuItem value="Roti">Roti</MenuItem>
       </TextField>
 
+      {/* UNIT SELECTION */}
+      <Box display="flex" gap={1} alignItems="flex-start">
+        <Box flex={1}>
+          <Autocomplete
+            options={units}
+            getOptionLabel={(option) => option ? `${option.unit_name} (${option.unit_symbol})` : ""}
+            value={units.find((u) => Number(u.id) === Number(formData.item_unit_id)) || null}
+            onChange={(event, newValue) => {
+              setFormData((prev) => ({ ...prev, item_unit_id: newValue ? newValue.id : "" }));
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Unit"
+                placeholder="Select Unit (e.g. kg, pcs)"
+                fullWidth
+              />
+            )}
+          />
+        </Box>
+        <Button
+          variant="outlined"
+          onClick={() => setUnitOpen(true)}
+          sx={{
+            height: 56,
+            textTransform: "none",
+            borderColor: "#CBD5E1",
+            color: "#475569",
+            fontWeight: 600,
+            "&:hover": { borderColor: "#9CA3AF" },
+          }}
+        >
+          + Add Unit
+        </Button>
+      </Box>
+
       {/* SELLING PRICE */}
       <TextField
         label="Selling Price"
@@ -115,7 +237,7 @@ const AddItemCreation = ({ onSuccess }) => {
         type="number"
         value={formData.selling_price}
         onChange={handleChange}
-        placeholder="Enter price"
+        placeholder="Enter price (e.g. 200)"
         fullWidth
       />
 
@@ -143,6 +265,43 @@ const AddItemCreation = ({ onSuccess }) => {
           Save Item
         </button>
       </Box>
+
+      {/* ===== ADD NEW UNIT MODAL ===== */}
+      <Dialog open={unitOpen} onClose={() => setUnitOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Add New Unit</DialogTitle>
+        <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <TextField
+            label="Unit Name"
+            placeholder="e.g. Kilogram, Piece"
+            value={newUnit.name}
+            onChange={(e) => setNewUnit((prev) => ({ ...prev, name: e.target.value }))}
+            fullWidth
+            size="small"
+          />
+          <TextField
+            label="Unit Symbol"
+            placeholder="e.g. kg, pcs"
+            value={newUnit.symbol}
+            onChange={(e) => setNewUnit((prev) => ({ ...prev, symbol: e.target.value }))}
+            fullWidth
+            size="small"
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setUnitOpen(false)} sx={{ color: "#475569", fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleAddUnit}
+            disabled={unitSaving}
+            sx={{ fontWeight: 600 }}
+          >
+            {unitSaving ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

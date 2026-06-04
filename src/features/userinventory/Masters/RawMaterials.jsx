@@ -14,10 +14,19 @@ import {
 import { Add, Edit, Description, Visibility } from "@mui/icons-material";
 
 import AddRawMaterialDrawer from "./AddRawMaterialDrawer";
+import QuickAddRawMaterial from "./QuickAddRawMaterial";
+import RawMaterialViewDialog from "./RawMaterialViewDialog";
+import RawMaterialLogDialog from "./RawMaterialLogDialog";
 
 const RawMaterials = () => {
   // 🔹 drawer open/close
   const [openForm, setOpenForm] = useState(false);
+  const [openQuickAdd, setOpenQuickAdd] = useState(false);
+
+  // 🔹 edit, view, log states
+  const [editItem, setEditItem] = useState(null);
+  const [viewItem, setViewItem] = useState(null);
+  const [logItem, setLogItem] = useState(null);
 
   // 🔹 filter states
   const [category, setCategory] = useState("All");
@@ -27,16 +36,15 @@ const RawMaterials = () => {
   const [rawMaterials, setRawMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
 
-
-  useEffect(() => {
+  const fetchRawMaterials = () => {
     const token = localStorage.getItem("authToken");
 
-if (!token) {
-  console.error("❌ Token missing");
-  return;
-}
+    if (!token) {
+      console.error("❌ Token missing");
+      return;
+    }
 
-
+    setLoading(true);
     fetch("http://localhost:5000/api/raw/get", {
       method: "GET",
       headers: {
@@ -61,9 +69,15 @@ if (!token) {
       })
       .catch((err) => {
         console.error("API Error:", err.message);
+      })
+      .finally(() => {
+        setLoading(false);
       });
-  }, []);
+  };
 
+  useEffect(() => {
+    fetchRawMaterials();
+  }, []);
 
   const filteredData = Array.isArray(rawMaterials)
     ? rawMaterials.filter((item) => {
@@ -77,10 +91,15 @@ if (!token) {
       })
     : [];
 
+  const uniqueCategories = [
+    "All",
+    ...new Set(rawMaterials.map((item) => item.category).filter(Boolean)),
+  ];
+
   return (
     <Box sx={{ p: 3, background: "#f9fafb", height: "100%" }}>
       {/* ================= HEADER ================= */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+      <Box sx={{ display: "flex", justifycontent: "space-between", mb: 2 }}>
         <Typography variant="h6" fontWeight={700}>
           Raw Materials Management
         </Typography>
@@ -89,12 +108,20 @@ if (!token) {
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={() => setOpenForm(true)}
+            onClick={() => {
+              setEditItem(null);
+              setOpenForm(true);
+            }}
           >
             Create New
           </Button>
 
-          <Button variant="outlined">Quick Add</Button>
+          <Button
+            variant="outlined"
+            onClick={() => setOpenQuickAdd(true)}
+          >
+            Quick Add
+          </Button>
           <Button variant="outlined">Action</Button>
           <Button variant="outlined">Files</Button>
         </Box>
@@ -116,11 +143,11 @@ if (!token) {
             onChange={(e) => setCategory(e.target.value)}
             sx={{ minWidth: 180 }}
           >
-            <MenuItem value="All">All Categories</MenuItem>
-            <MenuItem value="Grocery">Grocery</MenuItem>
-            <MenuItem value="Sweet">Sweet</MenuItem>
-            <MenuItem value="Dry Fruit">Dry Fruit</MenuItem>
-            <MenuItem value="Dairy">Dairy </MenuItem>
+            {uniqueCategories.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat === "All" ? "All Categories" : cat}
+              </MenuItem>
+            ))}
           </Select>
 
           <Button variant="outlined">Search</Button>
@@ -194,13 +221,13 @@ if (!token) {
 
               {/* ACTION */}
               <Box>
-                <IconButton>
+                <IconButton onClick={() => setViewItem(item)}>
                   <Visibility />
                 </IconButton>
-                <IconButton>
+                <IconButton onClick={() => { setEditItem(item); setOpenForm(true); }}>
                   <Edit />
                 </IconButton>
-                <IconButton>
+                <IconButton onClick={() => setLogItem(item)}>
                   <Description />
                 </IconButton>
               </Box>
@@ -211,7 +238,32 @@ if (!token) {
       {/* ================= DRAWER ================= */}
       <AddRawMaterialDrawer
         open={openForm}
-        onClose={() => setOpenForm(false)}
+        editItem={editItem}
+        onClose={() => {
+          setOpenForm(false);
+          setEditItem(null);
+          fetchRawMaterials(); // Refresh list to fetch new items & categories
+        }}
+      />
+
+      <QuickAddRawMaterial
+        open={openQuickAdd}
+        onClose={() => setOpenQuickAdd(false)}
+        onSuccess={fetchRawMaterials}
+      />
+
+      {/* ================= VIEW DIALOG ================= */}
+      <RawMaterialViewDialog
+        open={Boolean(viewItem)}
+        item={viewItem}
+        onClose={() => setViewItem(null)}
+      />
+
+      {/* ================= LOG DIALOG ================= */}
+      <RawMaterialLogDialog
+        open={Boolean(logItem)}
+        item={logItem}
+        onClose={() => setLogItem(null)}
       />
     </Box>
   );
