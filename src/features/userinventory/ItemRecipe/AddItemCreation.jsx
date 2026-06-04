@@ -11,8 +11,9 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
+import { createItem, updateItem } from "@services/api/itemAPI";
 
-const AddItemCreation = ({ onSuccess }) => {
+const AddItemCreation = ({ item, onSuccess, onClose }) => {
   const [formData, setFormData] = useState({
     name: "",
     category: "Sweet",
@@ -249,8 +250,24 @@ const AddItemCreation = ({ onSuccess }) => {
       )}
 
       {/* SAVE BUTTON */}
-      <Box display="flex" justifyContent="flex-end" mt={1}>
+      <Box display="flex" justifyContent="flex-end" gap={1} mt={1}>
         <button
+          type="button"
+          onClick={onClose}
+          disabled={loading}
+          style={{
+            padding: "8px 16px",
+            background: "#E0E0E0",
+            color: "#000",
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
           onClick={handleSave}
           disabled={loading}
           style={{
@@ -262,7 +279,7 @@ const AddItemCreation = ({ onSuccess }) => {
             cursor: "pointer",
           }}
         >
-          Save Item
+          {item ? "Update Item" : "Save Item"}
         </button>
       </Box>
 

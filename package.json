@@ -5,18 +5,13 @@
   "main": "dist-electron/main.js",
   "author": "Vyanjan Team",
   "license": "MIT",
+  
   "private": true,
   "scripts": {
-    "dev": "concurrently -k \"cross-env BROWSER=none npm run start\" \"npm run electron\"",
-    "start": "vite",
-    "build": "vite build",
-    "build:win": "npm run build && electron-builder --win",
-    "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-  },
+  "start": "vite",
+  "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron . --no-sandbox --disable-gpu",
+  "dev": "concurrently -k \"cross-env BROWSER=none npm run start\" \"npm run electron\""
+},
   "dependencies": {
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",

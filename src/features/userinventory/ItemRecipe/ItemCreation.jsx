@@ -18,13 +18,15 @@ import {
   Autocomplete,
   CircularProgress
 } from "@mui/material";
-import { Add, Edit, Close, ContentPaste } from "@mui/icons-material";
+import { Add, Edit } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import AddItemCreation from "./AddItemCreation";
+import { updateItem } from "@services/api/itemAPI";
 
 const ItemCreation = () => {
   const [items, setItems] = useState([]);
   const [openForm, setOpenForm] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(false);
   
   // Units for edit form
@@ -52,6 +54,9 @@ const ItemCreation = () => {
   });
 
   const token = localStorage.getItem("authToken");
+
+  const sortItems = (list) =>
+    [...list].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || (b.id || 0) - (a.id || 0));
 
   /* ================= GET ITEM LIST ================= */
   const fetchItems = async () => {
@@ -205,24 +210,32 @@ const ItemCreation = () => {
     <Box sx={page}>
       {/* HEADER */}
       <Box sx={header}>
-        <Typography variant="h6" fontWeight={700}>
-          Recipe Management
-        </Typography>
+        <Box>
+          <Typography variant="h6" fontWeight={700}>
+            Item Management
+          </Typography>
+          <Typography color="text.secondary" variant="body2">
+            This page shows the item list for your branch. Use Add Item to create or edit existing items.
+          </Typography>
+        </Box>
 
         <Button
           variant="contained"
           startIcon={<Add />}
           sx={createBtn}
-          onClick={() => setOpenForm(true)}
+          onClick={() => {
+            setSelectedItem(null);
+            setOpenForm(true);
+          }}
         >
-          Create New
+          Add Item
         </Button>
       </Box>
 
       {/* TABLE */}
       <Paper sx={tableWrap}>
         <Table>
-          <TableHead>
+              <TableHead>
             <TableRow sx={thead}>
               <TableCell>S.No</TableCell>
               <TableCell>Name</TableCell>
@@ -248,7 +261,7 @@ const ItemCreation = () => {
               </TableRow>
             ) : (
               items.map((item, index) => (
-                <TableRow key={item.id} hover>
+                <TableRow key={item.id || item.item_id || index} hover>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
@@ -275,15 +288,19 @@ const ItemCreation = () => {
       {/* ===== ADD ITEM POPUP ===== */}
       <Dialog
         open={openForm}
-        onClose={() => setOpenForm(false)}
+        onClose={() => {
+          setOpenForm(false);
+          setSelectedItem(null);
+        }}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Add Item Recipe</DialogTitle>
+        <DialogTitle>{selectedItem ? "Edit Item" : "Add Item"}</DialogTitle>
 
         <DialogContent dividers>
           <AddItemCreation
-            onSuccess={() => {
+            item={selectedItem}
+            onClose={() => {
               setOpenForm(false);
               fetchItems();
             }}
