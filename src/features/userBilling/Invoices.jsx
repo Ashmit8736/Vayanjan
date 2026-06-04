@@ -97,8 +97,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DownloadIcon from "@mui/icons-material/Download";
 
-/* ===== DUMMY DATA ===== */
-const invoiceData = [
+/* ===== DUMMY / INITIAL DATA ===== */
+const INITIAL_INVOICES = [
   {
     id: "INV-001",
     client: "Restaurant A",
@@ -129,11 +129,119 @@ const invoiceData = [
   },
 ];
 
+const RANDOM_CLIENTS = [
+  "Restaurant A", "Cafe B", "Hotel C", "Cloud Kitchen",
+  "Shivam Sharma", "Ansh Agarwal", "Uncle ji", "Vikas Sharma",
+  "Paras Agarwal", "Mukesh Trivedi", "Pranav Agarwal", "Arpit Sahu",
+  "Jagriti Singh", "Harsh Agarwal", "Rohit Verma", "Shiv Kumar"
+];
+
+const RANDOM_ITEMS = [
+  { name: "Samosa", price: 20 },
+  { name: "Pakodi", price: 20 },
+  { name: "Gunjiya", price: 400 },
+  { name: "oil", price: 100 },
+  { name: "ras1111", price: 123 },
+  { name: "panner partha", price: 123 },
+  { name: "aalu ka paratha", price: 60 },
+  { name: "Badam ka laddoo", price: 2000 },
+  { name: "Dry Fruit Laddoo", price: 2000 }
+];
+
 const Invoices = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredData = invoiceData.filter((inv) => {
+  const fetchInvoices = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch("http://localhost:5000/api/invoices/list", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Map backend currency formatting to frontend display or leave as is
+        const mapped = data.data.map(inv => ({
+          ...inv,
+          amount: typeof inv.amount === "string" && inv.amount.startsWith("₹") ? inv.amount : `₹${inv.amount}`
+        }));
+        setInvoices(mapped);
+      }
+    } catch (err) {
+      console.error("Error fetching invoices:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const generateRandomInvoice = () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+
+    const client = RANDOM_CLIENTS[Math.floor(Math.random() * RANDOM_CLIENTS.length)];
+    const id = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    // Pick 1-3 random items
+    const itemCount = Math.floor(Math.random() * 3) + 1;
+    let subtotal = 0;
+    const itemsList = [];
+    for (let i = 0; i < itemCount; i++) {
+      const item = RANDOM_ITEMS[Math.floor(Math.random() * RANDOM_ITEMS.length)];
+      const qty = Math.floor(Math.random() * 5) + 1;
+      subtotal += item.price * qty;
+      itemsList.push({
+        name: item.name,
+        qty,
+        price: item.price
+      });
+    }
+    const gst = subtotal * 0.18;
+    const total = Math.round(subtotal + gst);
+
+    const payload = {
+      id,
+      client_name: client,
+      subtotal: Number(subtotal.toFixed(2)),
+      gst: Number(gst.toFixed(2)),
+      total: Number(total.toFixed(2)),
+      items: itemsList
+    };
+
+    fetch("http://localhost:5000/api/invoices/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          alert(`⚡ Random Invoice ${id} generated, stock consumed & saved to DB!`);
+          fetchInvoices();
+        } else {
+          alert(`Failed to generate random invoice: ${res.message}`);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Failed to generate random invoice");
+      });
+  };
+
+  const filteredData = invoices.filter((inv) => {
     const matchSearch =
       inv.id.toLowerCase().includes(search.toLowerCase()) ||
       inv.client.toLowerCase().includes(search.toLowerCase());
@@ -150,6 +258,12 @@ const Invoices = () => {
     if (status === "Overdue") return "error";
     return "default";
   };
+
+  // Calculate statistics in real-time
+  const totalCount = invoices.length;
+  const paidCount = invoices.filter(inv => inv.status === "Paid").length;
+  const pendingCount = invoices.filter(inv => inv.status === "Pending").length;
+  const overdueCount = invoices.filter(inv => inv.status === "Overdue").length;
 
   return (
     <Box p={3} bgcolor="#F1F5F9" minHeight="100vh">
@@ -170,17 +284,34 @@ const Invoices = () => {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          size="large"
-          sx={{
-            borderRadius: 3,
-            fontWeight: 700,
-            px: 3,
-          }}
-        >
-          + Create Invoice
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={generateRandomInvoice}
+            sx={{
+              borderRadius: 3,
+              fontWeight: 800,
+              px: 3,
+              borderWidth: 2,
+              "&:hover": { borderWidth: 2 }
+            }}
+          >
+            ⚡ Generate Random
+          </Button>
+
+          <Button
+            variant="contained"
+            size="large"
+            sx={{
+              borderRadius: 3,
+              fontWeight: 700,
+              px: 3,
+            }}
+          >
+            + Create Invoice
+          </Button>
+        </Box>
       </Box>
 
       {/* ===== TOP STATS CARDS ===== */}
@@ -189,7 +320,7 @@ const Invoices = () => {
           <Paper sx={statCard("#4CAF50")}>
             <Typography>Total Invoices</Typography>
             <Typography variant="h5" fontWeight={800}>
-              128
+              {totalCount}
             </Typography>
           </Paper>
         </Grid>
@@ -198,7 +329,7 @@ const Invoices = () => {
           <Paper sx={statCard("#2196F3")}>
             <Typography>Paid</Typography>
             <Typography variant="h5" fontWeight={800}>
-              98
+              {paidCount}
             </Typography>
           </Paper>
         </Grid>
@@ -207,7 +338,7 @@ const Invoices = () => {
           <Paper sx={statCard("#FF9800")}>
             <Typography>Pending</Typography>
             <Typography variant="h5" fontWeight={800}>
-              22
+              {pendingCount}
             </Typography>
           </Paper>
         </Grid>
@@ -216,7 +347,7 @@ const Invoices = () => {
           <Paper sx={statCard("#E53935")}>
             <Typography>Overdue</Typography>
             <Typography variant="h5" fontWeight={800}>
-              8
+              {overdueCount}
             </Typography>
           </Paper>
         </Grid>

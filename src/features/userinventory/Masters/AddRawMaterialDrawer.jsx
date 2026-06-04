@@ -12,10 +12,11 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
-  Grid
+  Grid,
+  Autocomplete
 } from "@mui/material";
 
-const AddRawMaterialDrawer = ({ open, onClose }) => {
+const AddRawMaterialDrawer = ({ open, onClose, editItem }) => {
 
   /* ================= STATE ================= */
   const [form, setForm] = useState({
@@ -37,14 +38,58 @@ const AddRawMaterialDrawer = ({ open, onClose }) => {
   });
 
   const [units, setUnits] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   /* ================= EFFECTS ================= */
   useEffect(() => {
+    if (!open) return;
+
+    if (editItem) {
+      setForm({
+        name: editItem.name || "",
+        category: editItem.category || "",
+        purchase_unit_id: editItem.purchase_unit_id || "",
+        consume_unit_id: editItem.consume_unit_id || "",
+        conversion_factor: editItem.conversion_factor || "",
+        purchase_price: editItem.purchase_price || "",
+        tax_type: editItem.tax_type || "GST",
+        tax_percentage: editItem.tax_percentage || "",
+        minimum_stock_unit_id: editItem.consume_unit_id || "",
+        minimum_stock_level: editItem.minimum_stock_level || "",
+        reorder_stock_unit_id: editItem.consume_unit_id || "",
+        reorder_stock_level: editItem.reorder_stock_level || "",
+        stock_update_frequency: editItem.stock_update_frequency || "DAILY",
+        barcode: editItem.barcode || "",
+        expiry_days: editItem.expiry_days || ""
+      });
+    } else {
+      // Reset Form on Open (Create Mode)
+      setForm({
+        name: "",
+        category: "",
+        purchase_unit_id: "",
+        consume_unit_id: "",
+        conversion_factor: "",
+        purchase_price: "",
+        tax_type: "GST",
+        tax_percentage: "",
+        minimum_stock_unit_id: "",
+        minimum_stock_level: "",
+        reorder_stock_unit_id: "",
+        reorder_stock_level: "",
+        stock_update_frequency: "DAILY",
+        barcode: "",
+        expiry_days: ""
+      });
+    }
+
+    const token = localStorage.getItem("authToken");
+
     const fetchUnits = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/units/getUnit", {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`
+            Authorization: `Bearer ${token}`
           }
         });
 
@@ -57,8 +102,27 @@ const AddRawMaterialDrawer = ({ open, onClose }) => {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/raw/get", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          const uniqueCats = [...new Set(json.data.map(item => item.category).filter(Boolean))];
+          setCategories(uniqueCats);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories", err);
+      }
+    };
+
     fetchUnits();
-  }, []);
+    fetchCategories();
+  }, [open, editItem]);
 
   /* ================= HANDLERS ================= */
   const handleChange = (key, value) => {
@@ -106,8 +170,13 @@ const AddRawMaterialDrawer = ({ open, onClose }) => {
 
       console.log("FINAL PAYLOAD 👉", payload);
 
-      const res = await fetch("http://localhost:5000/api/raw/create", {
-        method: "POST",
+      const url = editItem 
+        ? `http://localhost:5000/api/raw/update/${editItem.id}`
+        : "http://localhost:5000/api/raw/create";
+      const method = editItem ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
@@ -118,11 +187,11 @@ const AddRawMaterialDrawer = ({ open, onClose }) => {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to create raw material");
+        alert(data.message || "Failed to save raw material");
         return;
       }
 
-      alert("Raw Material created successfully ✅");
+      alert(editItem ? "Raw Material updated successfully ✅" : "Raw Material created successfully ✅");
       onClose();
     } catch (err) {
       console.error(err);
@@ -135,7 +204,7 @@ const AddRawMaterialDrawer = ({ open, onClose }) => {
       <DialogContent sx={{ p: 4, bgcolor: "#f9fafb" }}>
 
         <Typography variant="h6" fontWeight={700} mb={3}>
-          Add Raw Material
+          {editItem ? "Edit Raw Material" : "Add Raw Material"}
         </Typography>
 
         {/* BASIC DETAILS */}
@@ -154,44 +223,48 @@ const AddRawMaterialDrawer = ({ open, onClose }) => {
             </Grid>
 
             <Grid item xs={6}>
-              <TextField
-                label="Category"
-                fullWidth
+              <Autocomplete
+                freeSolo
+                options={categories}
                 value={form.category}
-                onChange={(e) => handleChange("category", e.target.value)}
+                onChange={(event, newValue) => {
+                  handleChange("category", newValue || "");
+                }}
+                onInputChange={(event, newInputValue) => {
+                  handleChange("category", newInputValue || "");
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Category" fullWidth />
+                )}
               />
             </Grid>
 
             <Grid item xs={3}>
-              <Select
-                fullWidth
-                value={form.purchase_unit_id}
-                displayEmpty
-                onChange={(e) => handleChange("purchase_unit_id", e.target.value)}
-              >
-                <MenuItem value=""><em>Purchase Unit</em></MenuItem>
-                {units.map(unit => (
-                  <MenuItem key={unit.id} value={unit.id}>
-                    {unit.unit_name} ({unit.unit_symbol})
-                  </MenuItem>
-                ))}
-              </Select>
+              <Autocomplete
+                options={units}
+                getOptionLabel={(option) => option ? `${option.unit_name} (${option.unit_symbol})` : ""}
+                value={units.find(u => Number(u.id) === Number(form.purchase_unit_id)) || null}
+                onChange={(event, newValue) => {
+                  handleChange("purchase_unit_id", newValue ? newValue.id : "");
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} placeholder="Purchase Unit" size="small" fullWidth />
+                )}
+              />
             </Grid>
 
             <Grid item xs={3}>
-              <Select
-                fullWidth
-                value={form.consume_unit_id}
-                displayEmpty
-                onChange={(e) => handleChange("consume_unit_id", e.target.value)}
-              >
-                <MenuItem value=""><em>Consume Unit</em></MenuItem>
-                {units.map(unit => (
-                  <MenuItem key={unit.id} value={unit.id}>
-                    {unit.unit_name} ({unit.unit_symbol})
-                  </MenuItem>
-                ))}
-              </Select>
+              <Autocomplete
+                options={units}
+                getOptionLabel={(option) => option ? `${option.unit_name} (${option.unit_symbol})` : ""}
+                value={units.find(u => Number(u.id) === Number(form.consume_unit_id)) || null}
+                onChange={(event, newValue) => {
+                  handleChange("consume_unit_id", newValue ? newValue.id : "");
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} placeholder="Consume Unit" size="small" fullWidth />
+                )}
+              />
             </Grid>
 
             <Grid item xs={6}>

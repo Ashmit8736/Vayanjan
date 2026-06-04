@@ -10,6 +10,7 @@ import {
   MenuItem,
   Divider,
   CircularProgress,
+  Stack,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -31,6 +32,7 @@ const AddPurchase = ({ open, onClose }) => {
     invoice_date: "",
     invoice_number: "",
     purchase_order_id: "",
+    payment_status: "pending", // pending = unpaid, paid = paid
   });
 
   const emptyRow = {
@@ -145,6 +147,9 @@ const AddPurchase = ({ open, onClose }) => {
 
       const payload = {
         purchase_order_id: Number(form.purchase_order_id),
+        invoice_number: form.invoice_number || null,
+        invoice_date: form.invoice_date || null,
+        payment_status: form.payment_status || "pending",
         items: rows.map((r) => ({
           raw_material_id: Number(r.raw_material_id),
           quantity: Number(r.quantity),
@@ -194,14 +199,15 @@ onClose();
     0
   );
   const resetForm = () => {
-  setForm({
-    supplier_id: "",
-    invoice_date: "",
-    invoice_number: "",
-    purchase_order_id: "",
-  });
-  setRows([emptyRow]);
-};
+    setForm({
+      supplier_id: "",
+      invoice_date: "",
+      invoice_number: "",
+      purchase_order_id: "",
+      payment_status: "pending",
+    });
+    setRows([emptyRow]);
+  };
 
 
 
@@ -284,7 +290,8 @@ onClose();
                     fullWidth
                     label="Invoice Date"
                     InputLabelProps={{ shrink: true }}
-                    value={form.invoice_date}
+                    value={form.invoice_date || ""}
+                    onChange={(e) => setForm({ ...form, invoice_date: e.target.value })}
                   />
                 </Grid>
 
@@ -292,7 +299,8 @@ onClose();
                   <TextField
                     fullWidth
                     label="Invoice Number"
-                    value={form.invoice_number}
+                    value={form.invoice_number || ""}
+                    onChange={(e) => setForm({ ...form, invoice_number: e.target.value })}
                   />
                 </Grid>
               </Grid>
@@ -475,25 +483,82 @@ onClose();
               </Button>
             </Box>
 
-            {/* ================= GRAND TOTAL ================= */}
+            {/* ================= GRAND TOTAL & PAYMENT TYPE ================= */}
             <Box
               mt={3}
-              p={2}
+              p={2.5}
               sx={{
-                bgcolor: "#F9FAFB",
+                bgcolor: "#FFFFFF",
                 borderRadius: 2,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
                 display: "flex",
-                justifyContent: "flex-end",
-                alignItems: "center",
+                flexDirection: "column",
+                alignItems: "flex-end",
                 gap: 2,
               }}
             >
-              <Typography fontSize={16} fontWeight={600}>
-                Grand Total:
-              </Typography>
-              <Typography fontSize={20} fontWeight={700} color="#2563EB">
-                ₹ {grandTotal.toFixed(2)}
-              </Typography>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography fontSize={16} fontWeight={600} color="#475569">
+                  Grand Total:
+                </Typography>
+                <Typography fontSize={22} fontWeight={800} color="#2563EB">
+                  ₹ {grandTotal.toFixed(2)}
+                </Typography>
+              </Stack>
+
+              <Divider sx={{ width: "100%", my: 0.5 }} />
+
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography fontSize={14} fontWeight={700} color="#475569">
+                  Payment Type :
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant={form.payment_status === "pending" ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => setForm({ ...form, payment_status: "pending" })}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: "none",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      px: 2.5,
+                      py: 0.5,
+                      bgcolor: form.payment_status === "pending" ? "#EF4444" : "white",
+                      color: form.payment_status === "pending" ? "white" : "#EF4444",
+                      borderColor: "#EF4444",
+                      "&:hover": {
+                        bgcolor: form.payment_status === "pending" ? "#DC2626" : "#FEF2F2",
+                        borderColor: "#DC2626",
+                      }
+                    }}
+                  >
+                    Unpaid
+                  </Button>
+                  <Button
+                    variant={form.payment_status === "paid" ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => setForm({ ...form, payment_status: "paid" })}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: "none",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      px: 2.5,
+                      py: 0.5,
+                      bgcolor: form.payment_status === "paid" ? "#10B981" : "white",
+                      color: form.payment_status === "paid" ? "white" : "#10B981",
+                      borderColor: "#10B981",
+                      "&:hover": {
+                        bgcolor: form.payment_status === "paid" ? "#059669" : "#ECFDF5",
+                        borderColor: "#059669",
+                      }
+                    }}
+                  >
+                    Paid
+                  </Button>
+                </Stack>
+              </Stack>
             </Box>
 
             {/* SAVE */}
