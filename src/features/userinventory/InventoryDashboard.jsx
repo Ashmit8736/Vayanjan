@@ -82,13 +82,14 @@ const InventoryDashboard = () => {
             path="production/barcode-generation"
             element={<BarcodeGeneration />}
           />
+          <Route path="itemrecipe" element={<ItemCreation />} />
           <Route
             path="itemrecipe/itemcreation"
             element={<ItemCreation />}
           />
           <Route
-          path="itemrecipe/recipecreation"
-          element={<RecipeCreation/>}
+            path="itemrecipe/recipecreation"
+            element={<RecipeCreation />}
           />
         </Routes>
         

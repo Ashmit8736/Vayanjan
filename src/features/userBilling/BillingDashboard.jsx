@@ -3,6 +3,8 @@ import { Routes, Route } from "react-router-dom";
 import { BillingSidebar } from "./BillingSidebar";
 
 import BillingHome from "./BillingHome";
+import BillingItems from "./BillingItems";
+import BillingAddItem from "./BillingAddItem";
 import Invoices from "./Invoices";
 import Payments from "./Payments";
 import Reports from "./Reports";
@@ -22,6 +24,8 @@ const BillingDashboard = () => {
       <Box sx={{ flexGrow: 1 }}>
         <Routes>
           <Route index element={<BillingHome />} />
+          <Route path="items" element={<BillingItems />} />
+          <Route path="add-item" element={<BillingAddItem />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="payments" element={<Payments />} />
           <Route path="reports" element={<Reports />} />

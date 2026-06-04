@@ -13,14 +13,19 @@ import {
   DialogTitle,
   DialogContent,
 } from "@mui/material";
-import { Add, Edit, Close, ContentPaste } from "@mui/icons-material";
+import { Add, Edit } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import AddItemCreation from "./AddItemCreation";
+import { updateItem } from "@services/api/itemAPI";
 
 const ItemCreation = () => {
   const [items, setItems] = useState([]);
   const [openForm, setOpenForm] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const sortItems = (list) =>
+    [...list].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || (b.id || 0) - (a.id || 0));
 
   /* ================= GET ITEM LIST ================= */
   const fetchItems = async () => {
@@ -48,7 +53,13 @@ const ItemCreation = () => {
         return;
       }
 
-      setItems(Array.isArray(result.data) ? result.data : []);
+      const listItems = Array.isArray(result.data)
+        ? result.data
+        : Array.isArray(result.data?.items)
+        ? result.data.items
+        : [];
+
+      setItems(sortItems(listItems));
     } catch (error) {
       console.error("Fetch items error:", error);
       alert("Server error");
@@ -66,62 +77,75 @@ const ItemCreation = () => {
     <Box sx={page}>
       {/* HEADER */}
       <Box sx={header}>
-        <Typography variant="h6" fontWeight={700}>
-          Recipe Management
-        </Typography>
+        <Box>
+          <Typography variant="h6" fontWeight={700}>
+            Item Management
+          </Typography>
+          <Typography color="text.secondary" variant="body2">
+            This page shows the item list for your branch. Use Add Item to create or edit existing items.
+          </Typography>
+        </Box>
 
         <Button
           variant="contained"
           startIcon={<Add />}
           sx={createBtn}
-          onClick={() => setOpenForm(true)}
+          onClick={() => {
+            setSelectedItem(null);
+            setOpenForm(true);
+          }}
         >
-          Create New
+          Add Item
         </Button>
       </Box>
 
       {/* TABLE */}
       <Paper sx={tableWrap}>
         <Table>
-          <TableHead>
+              <TableHead>
             <TableRow sx={thead}>
               <TableCell>S.No</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Selling Price</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell>Item Name</TableCell>
+              <TableCell>Unit Price</TableCell>
+              <TableCell>Short Code</TableCell>
+              <TableCell>Unit</TableCell>
+              <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No data found
+                <TableCell colSpan={6} align="center">
+                  No items found. Click Add Item to create a new item.
                 </TableCell>
               </TableRow>
             ) : (
               items.map((item, index) => (
-                <TableRow key={item.id} hover>
+                <TableRow key={item.id || item.item_id || index} hover>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{item.name}</TableCell>
-                  <TableCell>{item.category}</TableCell>
-                  <TableCell>{item.selling_price}</TableCell>
+                  <TableCell>{item.selling_price || "-"}</TableCell>
+                  <TableCell>{item.short_code || "-"}</TableCell>
+                  <TableCell>
+                    {item.item_unit_name || "-"}
+                    {item.item_unit_symbol ? ` (${item.item_unit_symbol})` : ""}
+                  </TableCell>
                   <TableCell align="center">
-                    <IconButton sx={iconBtn}>
-                      <ContentPaste fontSize="small" />
-                    </IconButton>
-                    <IconButton sx={iconBtn}>
+                    <IconButton
+                      sx={iconBtn}
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setOpenForm(true);
+                      }}
+                    >
                       <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton sx={deleteBtn}>
-                      <Close fontSize="small" />
                     </IconButton>
                   </TableCell>
                 </TableRow>
@@ -134,17 +158,34 @@ const ItemCreation = () => {
       {/* ===== ADD ITEM POPUP ===== */}
       <Dialog
         open={openForm}
-        onClose={() => setOpenForm(false)}
+        onClose={() => {
+          setOpenForm(false);
+          setSelectedItem(null);
+        }}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Add Item Recipe</DialogTitle>
+        <DialogTitle>{selectedItem ? "Edit Item" : "Add Item"}</DialogTitle>
 
         <DialogContent dividers>
           <AddItemCreation
-            onSuccess={() => {
+            item={selectedItem}
+            onClose={() => {
               setOpenForm(false);
-              fetchItems(); // 🔥 LIST REFRESH AFTER ADD
+              setSelectedItem(null);
+            }}
+            onSuccess={(itemData) => {
+              if (selectedItem && selectedItem.id) {
+                setItems((prev) => sortItems(
+                  prev.map((row) =>
+                    row.id === itemData.id ? { ...row, ...itemData } : row
+                  )
+                ));
+              } else {
+                setItems((prev) => sortItems([...prev, itemData]));
+              }
+              setOpenForm(false);
+              setSelectedItem(null);
             }}
           />
         </DialogContent>

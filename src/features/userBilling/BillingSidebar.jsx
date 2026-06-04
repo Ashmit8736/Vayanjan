@@ -157,6 +157,8 @@ import PaymentsIcon from "@mui/icons-material/Payments";
 import Assessment from "@mui/icons-material/Assessment";
 import Dashboard from "@mui/icons-material/Dashboard";
 import AddShoppingCart from "@mui/icons-material/AddShoppingCart";
+import AddBox from "@mui/icons-material/AddBox";
+import Inventory2 from "@mui/icons-material/Inventory2";
 import People from "@mui/icons-material/People";
 import AccountBalanceWallet from "@mui/icons-material/AccountBalanceWallet";
 import Receipt from "@mui/icons-material/Receipt";
@@ -229,6 +231,26 @@ export const BillingSidebar = () => {
             <ListItemText primary="Create Invoice" />
           </ListItemButton>
 
+          {/* ADD MENU ITEM */}
+          <ListItemButton
+            component={NavLink}
+            to="/billing/add-item"
+            sx={menuItemStyle}
+          >
+            <AddBox sx={{ mr: 1.5 }} />
+            <ListItemText primary="Add Menu" />
+          </ListItemButton>
+
+          {/* ITEMS */}
+          <ListItemButton
+            component={NavLink}
+            to="/billing/items"
+            sx={menuItemStyle}
+          >
+            <Inventory2 sx={{ mr: 1.5 }} />
+            <ListItemText primary="Menu Items" />
+          </ListItemButton>
+
           {/* INVOICES */}
           <ListItemButton
             component={NavLink}
@@ -238,6 +260,8 @@ export const BillingSidebar = () => {
             <ReceiptLong sx={{ mr: 1.5 }} />
             <ListItemText primary="Invoices" />
           </ListItemButton>
+
+          
 
           {/* PAYMENTS */}
           <ListItemButton
