@@ -21,9 +21,12 @@ import AddStock from "./AddStock";
 const AvailableStock = () => {
   const [openAddStock, setOpenAddStock] = useState(false);
   const [stockData, setStockData] = useState([]);
+  const [updates, setUpdates] = useState({});
+  const [reasons, setReasons] = useState({});
+  const [comments, setComments] = useState({});
 
   // 🔹 API CALL (GET AVAILABLE STOCK)
-  useEffect(() => {
+  const fetchStock = async () => {
     const token = localStorage.getItem("authToken");
 
     if (!token) {
@@ -31,35 +34,80 @@ const AvailableStock = () => {
       return;
     }
 
-    fetch("http://localhost:5000/api/stock/stockAvailable", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text);
-        }
-        return res.json();
-      })
-      .then((res) => {
-        if (res.success && Array.isArray(res.data)) {
-          setStockData(res.data);
-        }
-      })
-      .catch((err) => console.error("API Error:", err.message));
+    try {
+      const res = await fetch("http://localhost:5000/api/stock/stockAvailable", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+
+      const resData = await res.json();
+      if (resData.success && Array.isArray(resData.data)) {
+        setStockData(resData.data);
+      }
+    } catch (err) {
+      console.error("API Error:", err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchStock();
   }, []);
 
+  const handleSaveAll = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+
+    const promises = Object.entries(updates)
+      .filter(([_, val]) => val !== "" && !isNaN(val))
+      .map(([rmId, val]) => {
+        return fetch("http://localhost:5000/api/stock/stockUpdate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            raw_material_id: Number(rmId),
+            quantity: Number(val),
+            reason: reasons[rmId] || "Counting Error",
+            comments: comments[rmId] || ""
+          }),
+        });
+      });
+
+    if (promises.length === 0) {
+      alert("No changes to save");
+      return;
+    }
+
+    try {
+      await Promise.all(promises);
+      alert("✅ Available stock updated successfully");
+      setUpdates({});
+      setReasons({});
+      setComments({});
+      fetchStock(); // Refresh stock list
+    } catch (e) {
+      console.error(e);
+      alert("❌ Error saving stock");
+    }
+  };
+
   const formatQty = (value) => {
-  if (value === null || value === undefined) return 0;
+    if (value === null || value === undefined) return 0;
 
-  const num = Number(value);
+    const num = Number(value);
 
-  // agar decimal . ke baad 0 hi hain → integer dikhao
-  return Number.isInteger(num) ? num : num.toFixed(2);
-};
+    // agar decimal . ke baad 0 hi hain → integer dikhao
+    return Number.isInteger(num) ? num : num.toFixed(2);
+  };
 
 
   return (
@@ -121,44 +169,10 @@ const AvailableStock = () => {
               <TableCell sx={{ background: "#e8f9fd" }}>
                 Update Your Available Stock
               </TableCell>
+              <TableCell style={{ width: "200px" }}>Adjustment Reason</TableCell>
               <TableCell>Comments</TableCell>
             </TableRow>
           </TableHead>
-{/* 
-          <TableBody>
-            {stockData.map((row) => (
-              <TableRow key={row.raw_material_id}>
-                <TableCell>
-                  <IconButton size="small">
-                    <StarBorder />
-                  </IconButton>
-                  {row.category}
-                </TableCell>
-
-                <TableCell>{row.raw_material_name}</TableCell>
-
-                <TableCell>
-                  {row.available_quantity_purchase} {row.purchase_unit_symbol}
-                </TableCell>
-
-                <TableCell sx={{ background: "#e8f9fd" }}>
-                  <Box display="flex" gap={1}>
-                    <TextField
-                      size="small"
-                      placeholder="Available Stock"
-                      InputProps={{
-                        endAdornment: `/${row.consume_unit_symbol}`,
-                      }}
-                    />
-                  </Box>
-                </TableCell>
-
-                <TableCell>
-                  <TextField size="small" placeholder="Comments" fullWidth />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody> */}
 
           <TableBody>
   {stockData.map((row) => (
@@ -176,7 +190,6 @@ const AvailableStock = () => {
 
       {/* AVAILABLE STOCK (PURCHASE UNIT) */}
       <TableCell>
-        {/* {row.available_quantity_purchase} {row.purchase_unit_symbol} */}
         {formatQty(row.available_quantity_purchase)} {row.purchase_unit_symbol}
       </TableCell>
 
@@ -189,19 +202,58 @@ const AvailableStock = () => {
           </Typography>
 
           {/* input to update */}
-          {/* <TextField
+          <TextField
             size="small"
-            placeholder="Add / Update Stock"
+            placeholder="New Stock"
+            value={updates[row.raw_material_id] || ""}
+            onChange={(e) => {
+              setUpdates({
+                ...updates,
+                [row.raw_material_id]: e.target.value
+              });
+            }}
             InputProps={{
               endAdornment: `/${row.consume_unit_symbol}`,
             }}
-          /> */}
+          />
         </Box>
+      </TableCell>
+
+      {/* REASON */}
+      <TableCell>
+        <Select
+          size="small"
+          value={reasons[row.raw_material_id] || "Counting Error"}
+          onChange={(e) => {
+            setReasons({
+              ...reasons,
+              [row.raw_material_id]: e.target.value
+            });
+          }}
+          fullWidth
+        >
+          <MenuItem value="Counting Error">Counting Error</MenuItem>
+          <MenuItem value="Pilferage">Pilferage</MenuItem>
+          <MenuItem value="Damage">Damage</MenuItem>
+          <MenuItem value="Opening Stock">Opening Stock</MenuItem>
+          <MenuItem value="Other">Other</MenuItem>
+        </Select>
       </TableCell>
 
       {/* COMMENTS */}
       <TableCell>
-        <TextField size="small" placeholder="Comments" fullWidth />
+        <TextField
+          size="small"
+          placeholder="Comments"
+          value={comments[row.raw_material_id] || ""}
+          onChange={(e) => {
+            setComments({
+              ...comments,
+              [row.raw_material_id]: e.target.value
+            });
+          }}
+          fullWidth
+        />
       </TableCell>
     </TableRow>
   ))}
@@ -212,7 +264,7 @@ const AvailableStock = () => {
 
       {/* ================= SAVE BUTTON ================= */}
       <Box display="flex" justifyContent="flex-end" mt={2}>
-        <Button variant="contained" color="error">
+        <Button variant="contained" color="error" onClick={handleSaveAll}>
           Save
         </Button>
       </Box>
