@@ -18,7 +18,7 @@ import {
   Autocomplete,
   CircularProgress
 } from "@mui/material";
-import { Add, Edit } from "@mui/icons-material";
+import { Add, Edit, ContentPaste, Close } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import AddItemCreation from "./AddItemCreation";
 import { updateItem } from "@services/api/itemAPI";
@@ -300,9 +300,12 @@ const ItemCreation = () => {
         <DialogContent dividers>
           <AddItemCreation
             item={selectedItem}
-            onClose={() => {
+            onSuccess={() => {
               setOpenForm(false);
               fetchItems();
+            }}
+            onClose={() => {
+              setOpenForm(false);
             }}
           />
         </DialogContent>
@@ -333,9 +336,9 @@ const ItemCreation = () => {
           </TextField>
 
           <Autocomplete
-            options={units}
+            options={Array.isArray(units) ? units : []}
             getOptionLabel={(option) => option ? `${option.unit_name} (${option.unit_symbol})` : ""}
-            value={units.find((u) => Number(u.id) === Number(editForm.item_unit_id)) || null}
+            value={(Array.isArray(units) ? units.find((u) => Number(u.id) === Number(editForm.item_unit_id)) : null) || null}
             onChange={(event, newValue) => {
               setEditForm((prev) => ({ ...prev, item_unit_id: newValue ? newValue.id : "" }));
             }}
