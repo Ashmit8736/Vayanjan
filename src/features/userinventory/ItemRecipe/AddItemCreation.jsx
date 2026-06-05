@@ -199,9 +199,9 @@ const AddItemCreation = ({ item, onSuccess, onClose }) => {
       <Box display="flex" gap={1} alignItems="flex-start">
         <Box flex={1}>
           <Autocomplete
-            options={units}
+            options={Array.isArray(units) ? units : []}
             getOptionLabel={(option) => option ? `${option.unit_name} (${option.unit_symbol})` : ""}
-            value={units.find((u) => Number(u.id) === Number(formData.item_unit_id)) || null}
+            value={(Array.isArray(units) ? units.find((u) => Number(u.id) === Number(formData.item_unit_id)) : null) || null}
             onChange={(event, newValue) => {
               setFormData((prev) => ({ ...prev, item_unit_id: newValue ? newValue.id : "" }));
             }}
