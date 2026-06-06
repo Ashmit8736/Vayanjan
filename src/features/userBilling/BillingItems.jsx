@@ -515,16 +515,72 @@ const BillingItems = () => {
 
   const clearCart = () => { setCartItems([]); setInvoiceNumber(""); setSavedMsg(false); };
 
-  const handleSave = () => {
-    if (!cartItems.length) return;
-    setSavedMsg(true);
-    setTimeout(() => setSavedMsg(false), 2500);
+  const saveInvoiceToBackend = async (invNo) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      alert("Authentication token missing. Please log in again.");
+      return false;
+    }
+
+    const payload = {
+      id: invNo,
+      client_name: "Walk-in Customer",
+      subtotal: Number(cartTotal.toFixed(2)),
+      gst: 0,
+      total: Number(cartTotal.toFixed(2)),
+      items: cartItems.map(item => ({
+        name: item.name,
+        qty: Number(item.quantity),
+        price: Number(item.selling_price)
+      }))
+    };
+
+    try {
+      const res = await fetch("http://localhost:5000/api/invoices/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return true;
+      } else {
+        alert("Failed to save invoice: " + (data.message || "Unknown error"));
+        return false;
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saving invoice. Please check server connection.");
+      return false;
+    }
   };
 
-  const handlePrint = () => {
+  const handleSave = async () => {
+    if (!cartItems.length) return;
     const inv = invoiceNumber || generateInvoiceNumber();
     if (!invoiceNumber) setInvoiceNumber(inv);
-    printInvoice(cartItems, inv);
+    const success = await saveInvoiceToBackend(inv);
+    if (success) {
+      setSavedMsg(true);
+      setTimeout(() => {
+        setSavedMsg(false);
+        clearCart();
+      }, 1500);
+    }
+  };
+
+  const handlePrint = async () => {
+    if (!cartItems.length) return;
+    const inv = invoiceNumber || generateInvoiceNumber();
+    if (!invoiceNumber) setInvoiceNumber(inv);
+    const success = await saveInvoiceToBackend(inv);
+    if (success) {
+      printInvoice(cartItems, inv);
+      clearCart();
+    }
   };
 
   const itemInCart = (id) => cartItems.find((c) => c.id === id);
