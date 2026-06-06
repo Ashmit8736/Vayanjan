@@ -1,141 +1,4 @@
-// import {
-//   Drawer,
-//   List,
-//   ListItemButton,
-//   ListItemText,
-//   Box,
-//   Typography,
-//   Button,
-// } from "@mui/material";
-// import Logout from "@mui/icons-material/Logout";
-// import ReceiptLong from "@mui/icons-material/ReceiptLong";
-// import Payments from "@mui/icons-material/Payments";
-// import Assessment from "@mui/icons-material/Assessment";
-// import Dashboard from "@mui/icons-material/Dashboard";
 
-// import { NavLink, useNavigate } from "react-router-dom";
-// import { useDispatch } from "react-redux";
-// import { logout } from "../../store/slices/authSlice";
-
-// export const BillingSidebar = () => {
-//   const dispatch = useDispatch();
-//   const navigate = useNavigate();
-
-//   const handleLogout = () => {
-//     dispatch(logout());
-//     if (window.electronAPI) {
-//       window.electronAPI.logout();
-//     }
-//     navigate("/login");
-//   };
-
-//   return (
-//     <Drawer
-//       variant="permanent"
-//       sx={{
-//         width: 260,
-//         "& .MuiDrawer-paper": {
-//           width: 260,
-//           bgcolor: "#0F172A", // SAME AS INVENTORY
-//           color: "#E5E7EB",
-//           borderRight: "1px solid #1E293B",
-//           display: "flex",
-//           flexDirection: "column",
-//         },
-//       }}
-//     >
-//       {/* TITLE */}
-//       <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #1E293B" }}>
-//         <Typography fontWeight={800} fontSize={18} color="white">
-//           Billing Dashboard
-//         </Typography>
-//       </Box>
-
-//       {/* MENU */}
-//       <List sx={{ px: 1, mt: 1, flexGrow: 1 }}>
-//         {/* DASHBOARD */}
-//         <ListItemButton
-//           component={NavLink}
-//           to="/billing"
-//           end
-//           sx={menuItemStyle}
-//         >
-//           <Dashboard sx={{ mr: 1 }} />
-//           <ListItemText primary="Dashboard" />
-//         </ListItemButton>
-
-//         {/* INVOICES */}
-//         <ListItemButton
-//           component={NavLink}
-//           to="/billing/invoices"
-//           sx={menuItemStyle}
-//         >
-//           <ReceiptLong sx={{ mr: 1 }} />
-//           <ListItemText primary="Invoices" />
-//         </ListItemButton>
-
-//         {/* PAYMENTS */}
-//         <ListItemButton
-//           component={NavLink}
-//           to="/billing/payments"
-//           sx={menuItemStyle}
-//         >
-//           <Payments sx={{ mr: 1 }} />
-//           <ListItemText primary="Payments" />
-//         </ListItemButton>
-
-//         {/* REPORTS */}
-//         <ListItemButton
-//           component={NavLink}
-//           to="/billing/reports"
-//           sx={menuItemStyle}
-//         >
-//           <Assessment sx={{ mr: 1 }} />
-//           <ListItemText primary="Reports" />
-//         </ListItemButton>
-//       </List>
-
-//       {/* LOGOUT (SAME AS INVENTORY) */}
-//       <Box sx={{ px: 2, pb: 2 }}>
-//         <Button
-//           startIcon={<Logout />}
-//           onClick={handleLogout}
-//           fullWidth
-//           size="medium"
-//           sx={{
-//             textTransform: "none",
-//             color: "#94A3B8",
-//             justifyContent: "flex-start",
-//             px: 1,
-//             mt: 1,
-//             fontWeight: 600,
-//             "&:hover": {
-//               bgcolor: "transparent",
-//               color: "#FF5722",
-//               "& .MuiSvgIcon-root": { color: "#FF5722" },
-//             },
-//           }}
-//         >
-//           Sign Out
-//         </Button>
-//       </Box>
-//     </Drawer>
-//   );
-// };
-
-// const menuItemStyle = {
-//   borderRadius: 2,
-//   mx: 1,
-//   my: 0.5,
-//   color: "#CBD5E1",
-//   "&.active": {
-//     bgcolor: "#1E40AF",
-//     color: "#fff",
-//   },
-//   "&:hover": {
-//     bgcolor: "#1E293B",
-//   },
-// };
 
 
 
@@ -239,6 +102,16 @@ export const BillingSidebar = () => {
           >
             <AddBox sx={{ mr: 1.5 }} />
             <ListItemText primary="Add Menu" />
+          </ListItemButton>
+
+          {/* VOUCHERS */}
+          <ListItemButton
+            component={NavLink}
+            to="/billing/vouchers"
+            sx={menuItemStyle}
+          >
+            <Receipt sx={{ mr: 1.5 }} />
+            <ListItemText primary="Receiving Stock" />
           </ListItemButton>
 
           {/* ITEMS */}

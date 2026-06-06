@@ -13,6 +13,7 @@ import Customers from "./Customers";
 import Transactions from "./Transactions";
 import Expenses from "./Expenses";
 import BillingSettings from "./BillingSettings";
+import Vouchers from "./Vouchers";
 
 const BillingDashboard = () => {
   return (
@@ -26,6 +27,7 @@ const BillingDashboard = () => {
           <Route index element={<BillingHome />} />
           <Route path="items" element={<BillingItems />} />
           <Route path="add-item" element={<BillingAddItem />} />
+          <Route path="vouchers" element={<Vouchers />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="payments" element={<Payments />} />
           <Route path="reports" element={<Reports />} />
