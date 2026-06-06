@@ -22,8 +22,9 @@ const RANDOM_CLIENTS = [
 ];
 
 const CreateInvoice = () => {
-  const [customer, setCustomer] = useState("");
+    const [customer, setCustomer] = useState("");
   const [invoiceNo, setInvoiceNo] = useState(`INV-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [tokenNumber, setTokenNumber] = useState(`TKN-${Math.floor(1000 + Math.random() * 9000)}`);
   const [availableItems, setAvailableItems] = useState([]);
 
   const [items, setItems] = useState([
@@ -79,7 +80,9 @@ const CreateInvoice = () => {
     setCustomer(randomClient);
 
     const generatedInv = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const generatedToken = `TKN-${Math.floor(1000 + Math.random() * 9000)}`;
     setInvoiceNo(generatedInv);
+    setTokenNumber(generatedToken);
 
     // Pick 1-3 random items from availableItems or fallback list
     const itemsSource = availableItems.length > 0 ? availableItems : [
@@ -101,7 +104,7 @@ const CreateInvoice = () => {
       });
     }
     setItems(generatedItems);
-    alert("⚡ Form populated with random invoice details! Click 'Generate Bill' to save.");
+    alert(`⚡ Form populated with random invoice details! Invoice: ${generatedInv}, Token: ${generatedToken}. Click 'Generate Bill' to save.`);
   };
 
   const subtotal = items.reduce(
@@ -131,11 +134,13 @@ const CreateInvoice = () => {
     }
 
     const payload = {
-      id: invoiceNo,
+      invoice_number: invoiceNo,
+      token_number: tokenNumber,
+      kot_number: tokenNumber,
       client_name: customer,
       subtotal: Number(subtotal.toFixed(2)),
       gst: Number(gst.toFixed(2)),
-      total: Number(total.toFixed(2)),
+      total_amount: Number(total.toFixed(2)),
       items: validItems.map(item => ({
         name: item.name,
         qty: Number(item.qty),
@@ -162,6 +167,7 @@ const CreateInvoice = () => {
         // Reset Form
         setCustomer("");
         setInvoiceNo(`INV-${Math.floor(1000 + Math.random() * 9000)}`);
+        setTokenNumber(`TKN-${Math.floor(1000 + Math.random() * 9000)}`);
         setItems([{ name: "", qty: 1, price: 0 }]);
       })
       .catch(err => {
@@ -226,6 +232,15 @@ const CreateInvoice = () => {
                   fullWidth
                   value={invoiceNo}
                   onChange={(e) => setInvoiceNo(e.target.value)}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Token Number"
+                  fullWidth
+                  value={tokenNumber}
+                  onChange={(e) => setTokenNumber(e.target.value)}
                 />
               </Grid>
 

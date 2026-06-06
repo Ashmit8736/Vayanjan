@@ -76,6 +76,7 @@
 
 
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -149,6 +150,7 @@ const RANDOM_ITEMS = [
 ];
 
 const Invoices = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [invoices, setInvoices] = useState([]);
@@ -167,10 +169,11 @@ const Invoices = () => {
       });
       const data = await res.json();
       if (data.success) {
-        // Map backend currency formatting to frontend display or leave as is
         const mapped = data.data.map(inv => ({
           ...inv,
-          amount: typeof inv.amount === "string" && inv.amount.startsWith("₹") ? inv.amount : `₹${inv.amount}`
+          amount: typeof inv.amount === "string" && inv.amount.startsWith("₹") ? inv.amount : `₹${inv.amount}`,
+          client_name: inv.client_name || inv.client || "-",
+          status: inv.status || "Paid"
         }));
         setInvoices(mapped);
       }
@@ -190,7 +193,8 @@ const Invoices = () => {
     if (!token) return;
 
     const client = RANDOM_CLIENTS[Math.floor(Math.random() * RANDOM_CLIENTS.length)];
-    const id = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const invoiceNumber = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const tokenNumber = `TKN-${Math.floor(1000 + Math.random() * 9000)}`;
     
     // Pick 1-3 random items
     const itemCount = Math.floor(Math.random() * 3) + 1;
@@ -210,11 +214,13 @@ const Invoices = () => {
     const total = Math.round(subtotal + gst);
 
     const payload = {
-      id,
+      invoice_number: invoiceNumber,
+      token_number: tokenNumber,
+      kot_number: tokenNumber,
       client_name: client,
       subtotal: Number(subtotal.toFixed(2)),
       gst: Number(gst.toFixed(2)),
-      total: Number(total.toFixed(2)),
+      total_amount: Number(total.toFixed(2)),
       items: itemsList
     };
 
@@ -229,7 +235,7 @@ const Invoices = () => {
       .then(res => res.json())
       .then(res => {
         if (res.success) {
-          alert(`⚡ Random Invoice ${id} generated, stock consumed & saved to DB!`);
+          alert(`⚡ Random Invoice ${invoiceNumber} created with Token ${tokenNumber}, stock consumed & saved to DB!`);
           fetchInvoices();
         } else {
           alert(`Failed to generate random invoice: ${res.message}`);
@@ -242,9 +248,13 @@ const Invoices = () => {
   };
 
   const filteredData = invoices.filter((inv) => {
+    const searchLower = search.toLowerCase();
     const matchSearch =
-      inv.id.toLowerCase().includes(search.toLowerCase()) ||
-      inv.client.toLowerCase().includes(search.toLowerCase());
+      inv.invoice_number?.toLowerCase().includes(searchLower) ||
+      inv.token_number?.toLowerCase().includes(searchLower) ||
+      inv.client_name?.toLowerCase().includes(searchLower) ||
+      inv.client?.toLowerCase().includes(searchLower) ||
+      String(inv.id).toLowerCase().includes(searchLower);
 
     const matchFilter =
       filter === "All" ? true : inv.status === filter;
@@ -308,6 +318,7 @@ const Invoices = () => {
               fontWeight: 700,
               px: 3,
             }}
+            onClick={() => navigate("/billing/create-invoice")}
           >
             + Create Invoice
           </Button>
@@ -409,10 +420,10 @@ const Invoices = () => {
           <TableHead>
             <TableRow sx={{ bgcolor: "#EEF2FF" }}>
               <TableCell sx={{ fontWeight: 800 }}>
-                Invoice ID
+                Invoice No
               </TableCell>
               <TableCell sx={{ fontWeight: 800 }}>
-                Client
+                Token
               </TableCell>
               <TableCell sx={{ fontWeight: 800 }}>
                 Date
@@ -432,7 +443,7 @@ const Invoices = () => {
           <TableBody>
             {filteredData.map((inv) => (
               <TableRow
-                key={inv.id}
+                key={`${inv.invoice_number}-${inv.token_number}-${inv.id}`}
                 hover
                 sx={{
                   "&:hover": {
@@ -441,9 +452,9 @@ const Invoices = () => {
                 }}
               >
                 <TableCell sx={{ fontWeight: 700 }}>
-                  {inv.id}
+                  {inv.invoice_number || inv.id}
                 </TableCell>
-                <TableCell>{inv.client}</TableCell>
+                <TableCell>{inv.token_number || "-"}</TableCell>
                 <TableCell>{inv.date}</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>
                   {inv.amount}

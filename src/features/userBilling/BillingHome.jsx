@@ -169,7 +169,7 @@ const BillingHome = () => {
       });
       const json = await res.json();
       if (json.success) {
-        setStats(json.data);
+        setStats(prev => ({ ...prev, ...json.data }));
       } else {
         setError(json.message || "Failed to load dashboard metrics");
       }

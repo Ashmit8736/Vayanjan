@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { getItemsList } from "@services/api/itemAPI";
+import axiosInstance from "@services/api/axios-config";
 
 // ─── Utility ────────────────────────────────────────────────────────────────
 const generateInvoiceNumber = () => {
@@ -11,8 +12,12 @@ const generateInvoiceNumber = () => {
   return `INV-${date}-${time}-${rand}`;
 };
 
+const generateTokenNumber = () => {
+  return `TKN-${Math.floor(1000 + Math.random() * 9000)}`;
+};
+
 // ─── Print Invoice ───────────────────────────────────────────────────────────
-const printInvoice = (cartItems, invoiceNumber) => {
+const printInvoice = (cartItems, invoiceNumber, tokenNumber) => {
   if (!cartItems.length) return;
   const total = cartItems
     .reduce((s, i) => s + (Number(i.selling_price) || 0) * Number(i.quantity), 0)
@@ -39,8 +44,11 @@ const printInvoice = (cartItems, invoiceNumber) => {
       .total{margin-top:16px;text-align:right;font-size:15px;font-weight:700}
     </style></head><body>
     <h1>Invoice</h1>
-    <div class="meta"><div><strong>Invoice No:</strong> ${invoiceNumber}</div>
-    <div><strong>Date:</strong> ${new Date().toLocaleDateString("en-IN")}</div></div>
+    <div class="meta">
+      <div><strong>Invoice No:</strong> ${invoiceNumber}</div>
+      <div><strong>Token No:</strong> ${tokenNumber || "NA"}</div>
+      <div><strong>Date:</strong> ${new Date().toLocaleDateString("en-IN")}</div>
+    </div>
     <table><thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="total">Grand Total: ₹${total}</div>
@@ -416,6 +424,9 @@ const BillingItems = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [cartItems, setCartItems] = useState([]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [tokenNumber, setTokenNumber] = useState("");
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
 
   // Dialog
@@ -498,6 +509,8 @@ const BillingItems = () => {
       return [...prev, { ...selectedItem, quantity: Number(quantity) }];
     });
     if (!invoiceNumber) setInvoiceNumber(generateInvoiceNumber());
+    if (!tokenNumber) setTokenNumber(generateTokenNumber());
+    setIsSaved(false);
     closeModal();
   };
 
@@ -507,80 +520,88 @@ const BillingItems = () => {
         .map((i) => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)
         .filter((i) => i.quantity > 0)
     );
+    setIsSaved(false);
   };
 
   const removeItem = (id) => {
     setCartItems((prev) => prev.filter((i) => i.id !== id));
+    setIsSaved(false);
   };
 
-  const clearCart = () => { setCartItems([]); setInvoiceNumber(""); setSavedMsg(false); };
-
-  const saveInvoiceToBackend = async (invNo) => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      alert("Authentication token missing. Please log in again.");
-      return false;
-    }
-
-    const payload = {
-      id: invNo,
-      client_name: "Walk-in Customer",
-      subtotal: Number(cartTotal.toFixed(2)),
-      gst: 0,
-      total: Number(cartTotal.toFixed(2)),
-      items: cartItems.map(item => ({
-        name: item.name,
-        qty: Number(item.quantity),
-        price: Number(item.selling_price)
-      }))
-    };
-
-    try {
-      const res = await fetch("http://localhost:5000/api/invoices/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        return true;
-      } else {
-        alert("Failed to save invoice: " + (data.message || "Unknown error"));
-        return false;
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error saving invoice. Please check server connection.");
-      return false;
-    }
+  const clearCart = () => { 
+    setCartItems([]); 
+    setInvoiceNumber(""); 
+    setTokenNumber(""); 
+    setIsSaved(false); 
+    setSavedMsg(false); 
   };
 
   const handleSave = async () => {
-    if (!cartItems.length) return;
-    const inv = invoiceNumber || generateInvoiceNumber();
-    if (!invoiceNumber) setInvoiceNumber(inv);
-    const success = await saveInvoiceToBackend(inv);
-    if (success) {
-      setSavedMsg(true);
-      setTimeout(() => {
-        setSavedMsg(false);
-        clearCart();
-      }, 1500);
+    if (!cartItems.length) return null;
+    setIsSaving(true);
+    try {
+      const payload = {
+        invoice_number: invoiceNumber || generateInvoiceNumber(),
+        token_number: tokenNumber || generateTokenNumber(),
+        kot_number: tokenNumber || generateTokenNumber(),
+        total_amount: Number(cartTotal.toFixed(2)),
+        items: cartItems.map((item) => ({
+          id: item.id,
+          name: item.name,
+          qty: item.quantity,
+          price: item.selling_price
+        }))
+      };
+
+      const res = await axiosInstance.post("/invoices/create", payload);
+      if (res?.success) {
+        const savedData = res.data || {};
+        const finalInv = savedData.invoice_number || payload.invoice_number;
+        const finalTkn = savedData.token_number || payload.token_number;
+        setInvoiceNumber(finalInv);
+        setTokenNumber(finalTkn);
+        setIsSaved(true);
+        setSavedMsg(true);
+        setTimeout(() => setSavedMsg(false), 3000);
+        return { invoice_number: finalInv, token_number: finalTkn };
+      } else {
+        alert(res?.message || "Failed to save invoice");
+        return null;
+      }
+    } catch (e) {
+      console.error("Save invoice error:", e);
+      const isDuplicate = e?.message?.toLowerCase().includes("exists") || e?.message?.toLowerCase().includes("duplicate");
+      if (isDuplicate) {
+        const newInv = generateInvoiceNumber();
+        const newTkn = generateTokenNumber();
+        setInvoiceNumber(newInv);
+        setTokenNumber(newTkn);
+        alert(`Duplicate entry detected in database! Regenerated new Invoice (${newInv}) and Token (${newTkn}). Please try saving again.`);
+      } else {
+        alert(e?.message || "Error saving invoice to database");
+      }
+      return null;
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handlePrint = async () => {
     if (!cartItems.length) return;
-    const inv = invoiceNumber || generateInvoiceNumber();
-    if (!invoiceNumber) setInvoiceNumber(inv);
-    const success = await saveInvoiceToBackend(inv);
-    if (success) {
-      printInvoice(cartItems, inv);
-      clearCart();
+    
+    let currentInvoiceNo = invoiceNumber;
+    let currentTokenNo = tokenNumber;
+
+    if (!isSaved) {
+      const savedData = await handleSave();
+      if (!savedData) {
+        return;
+      }
+      currentInvoiceNo = savedData.invoice_number;
+      currentTokenNo = savedData.token_number;
     }
+
+    printInvoice(cartItems, currentInvoiceNo, currentTokenNo);
   };
 
   const itemInCart = (id) => cartItems.find((c) => c.id === id);
@@ -710,21 +731,38 @@ const BillingItems = () => {
 
         {cartItems.length > 0 && (
           <div style={S.cartFooter}>
-            {invoiceNumber && (
-              <div style={S.invoiceNo}>📄 {invoiceNumber}</div>
-            )}
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              {invoiceNumber && (
+                <div style={S.invoiceNo}>📄 Invoice: {invoiceNumber}</div>
+              )}
+              {tokenNumber && (
+                <div style={{ ...S.invoiceNo, textAlign: "right" }}>🎫 Token: {tokenNumber}</div>
+              )}
+            </div>
             <div style={S.totalRow}>
               <span style={S.totalLabel}>Grand Total</span>
               <span style={S.totalValue}>₹{cartTotal.toFixed(2)}</span>
             </div>
             {savedMsg && (
               <div style={{ ...S.statusBar, background: "#dcfce7", color: "#16a34a" }}>
-                ✓ Invoice saved! You can now print.
+                ✓ Invoice saved to DB! Ready to print.
               </div>
             )}
             <div style={S.footerBtns}>
-              <button style={S.saveBtn} onClick={handleSave}>Save Invoice</button>
-              <button style={S.printBtn} onClick={handlePrint}>Print / Download</button>
+              <button 
+                style={{ ...S.saveBtn, opacity: isSaving ? 0.7 : 1, cursor: isSaving ? "not-allowed" : "pointer" }} 
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : isSaved ? "Saved ✓" : "Save Invoice"}
+              </button>
+              <button 
+                style={S.printBtn} 
+                onClick={handlePrint}
+                disabled={isSaving}
+              >
+                Print / Download
+              </button>
             </div>
           </div>
         )}
