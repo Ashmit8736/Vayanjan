@@ -111,7 +111,7 @@ export const BillingSidebar = () => {
             sx={menuItemStyle}
           >
             <Receipt sx={{ mr: 1.5 }} />
-            <ListItemText primary="Vouchers" />
+            <ListItemText primary="Receiving Stock" />
           </ListItemButton>
 
           {/* ITEMS */}

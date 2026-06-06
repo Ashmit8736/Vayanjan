@@ -42,7 +42,7 @@ const printVoucherSlip = (voucher) => {
   const html = `<!DOCTYPE html>
 <html>
 <head>
-  <title>Voucher Receipt #${voucher.id || 'N/A'}</title>
+  <title>Receiving Stock Receipt #${voucher.id || 'N/A'}</title>
   <style>
     body {
       font-family: 'Courier New', Courier, monospace;
@@ -101,21 +101,30 @@ const printVoucherSlip = (voucher) => {
       font-size: 11px;
     }
     @media print {
-      body { margin: 0; }
+      @page {
+        margin: 0;
+      }
+      body {
+        margin: 8mm 6mm;
+      }
     }
   </style>
 </head>
 <body>
+  <div style="font-size: 10.5px; margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 5px; font-family: monospace; text-align: left;">
+    <span>${new Date().toLocaleDateString("en-US", {year: '2-digit', month: 'numeric', day: 'numeric'})}, ${new Date().toLocaleTimeString("en-US", {hour: 'numeric', minute: '2-digit'})} &nbsp;&nbsp; Receiving Stock Receipt #${voucher.id || 'TEMP'}</span>
+  </div>
+
   <div class="header">
-    <h1>PetPooja Voucher</h1>
+    <h1>PetPooja Receiving Stock</h1>
     <div>Branch ID: ${voucher.branch_id || 'Main'}</div>
     <div>Receipt Slip</div>
   </div>
   
   <div class="content-box">
     <div class="meta-row">
-      <strong>Voucher ID:</strong>
-      <span>VOUCH-${voucher.id || 'TEMP'}</span>
+      <strong>Receiving ID:</strong>
+      <span>REC-${voucher.id || 'TEMP'}</span>
     </div>
     <div class="meta-row">
       <strong>Status:</strong>
@@ -233,7 +242,7 @@ const Vouchers = () => {
       saveOfflineVouchers(updated);
       setManualDialogOpen(false);
       setManualForm({ item_name: "", quantity: "", status: "Pending" });
-      alert("Offline Mode: Voucher added locally! ✅");
+      alert("Offline Mode: Receiving stock added locally! ✅");
       return;
     }
 
@@ -254,16 +263,16 @@ const Vouchers = () => {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Voucher created successfully! ✅");
+        alert("Receiving stock created successfully! ✅");
         setManualDialogOpen(false);
         setManualForm({ item_name: "", quantity: "", status: "Pending" });
         fetchVouchers();
       } else {
-        alert("Failed to create voucher: " + data.message);
+        alert("Failed to create receiving stock: " + data.message);
       }
     } catch (err) {
       console.error(err);
-      alert("Error creating voucher. Saving offline instead.");
+      alert("Error creating receiving stock. Saving offline instead.");
       // Fallback
       const randomId = Math.floor(100000 + Math.random() * 900000);
       const newVoucher = {
@@ -399,7 +408,7 @@ const Vouchers = () => {
         }));
         const updatedOffline = [...mapped, ...currentOffline];
         saveOfflineVouchers(updatedOffline);
-        alert(`Offline Mode: ${mapped.length} vouchers imported and stored locally! ✅`);
+        alert(`Offline Mode: ${mapped.length} receiving stocks imported and stored locally! ✅`);
       } else {
         // Online Mode: Bulk post to backend
         const token = localStorage.getItem("authToken");
@@ -414,10 +423,10 @@ const Vouchers = () => {
           });
           const data = await res.json();
           if (data.success) {
-            alert(`Online Mode: ${imported.length} vouchers imported successfully! ✅`);
+            alert(`Online Mode: ${imported.length} receiving stocks imported successfully! ✅`);
             fetchVouchers();
           } else {
-            alert(`Failed to import vouchers: ${data.message}`);
+            alert(`Failed to import receiving stocks: ${data.message}`);
           }
         } catch (err) {
           console.error("Upload error:", err);
@@ -461,7 +470,7 @@ const Vouchers = () => {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Offline vouchers synced successfully with server! 🚀");
+        alert("Offline receiving stocks synced successfully with server! 🚀");
         localStorage.removeItem("offline_vouchers");
         setOfflineVouchers([]);
         fetchVouchers();
@@ -470,7 +479,7 @@ const Vouchers = () => {
       }
     } catch (err) {
       console.error("Sync error:", err);
-      alert("Failed to sync offline vouchers. Please try again later.");
+      alert("Failed to sync offline receiving stocks. Please try again later.");
     } finally {
       setSyncing(false);
     }
@@ -544,7 +553,7 @@ const Vouchers = () => {
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems="center" spacing={2}>
           <Box>
             <Typography variant="h4" fontWeight={900} color="#1E293B">
-              🎫 Voucher Management
+              🎫 Receiving Stock Management
             </Typography>
             <Typography variant="subtitle2" color="text.secondary">
               Verify, receive and track finished production items
@@ -579,7 +588,7 @@ const Vouchers = () => {
           }
           sx={{ mb: 3, borderRadius: 3, fontWeight: 600 }}
         >
-          You have {offlineVouchers.length} offline voucher(s) stored on this device. Click Sync to upload them to the server.
+          You have {offlineVouchers.length} offline receiving stock(s) stored on this device. Click Sync to upload them to the server.
         </Alert>
       )}
 
@@ -589,7 +598,7 @@ const Vouchers = () => {
           {/* SEARCH BAR */}
           <TextField
             fullWidth
-            placeholder="Search by Voucher ID or Item Name..."
+            placeholder="Search by Receiving ID or Item Name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
@@ -653,7 +662,7 @@ const Vouchers = () => {
                 "&:hover": { bgcolor: "#7C3AED" },
               }}
             >
-              Add Voucher Manually
+              Add Receiving Stock Manually
             </Button>
           </Stack>
         </Grid>
@@ -665,14 +674,14 @@ const Vouchers = () => {
           <Box display="flex" justifyContent="center" alignItems="center" p={8}>
             <CircularProgress color="primary" />
             <Typography variant="body1" sx={{ ml: 2, color: "text.secondary", fontWeight: 600 }}>
-              Loading vouchers...
+              Loading records...
             </Typography>
           </Box>
         ) : (
           <Table>
             <TableHead sx={{ bgcolor: "#F8FAFC" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Voucher ID</TableCell>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Receiving ID</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Item Name</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Original Qty</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Remaining Qty</TableCell>
@@ -686,7 +695,7 @@ const Vouchers = () => {
               {filteredVouchers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 6, color: "text.secondary" }}>
-                    No vouchers found.
+                    No records found.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -704,9 +713,9 @@ const Vouchers = () => {
                         bgcolor: voucher.isOffline ? "#FEF9C3" : "inherit", // Highlight offline rows
                       }}
                     >
-                      {/* Voucher ID */}
+                      {/* Receiving ID */}
                       <TableCell sx={{ fontWeight: 700, color: "#1E293B" }}>
-                        VOUCH-{voucher.id}
+                        REC-{voucher.id}
                         {voucher.isOffline && (
                           <Chip label="Local" size="small" color="warning" sx={{ ml: 1, height: 18, fontSize: 10, fontWeight: 700 }} />
                         )}
@@ -776,7 +785,7 @@ const Vouchers = () => {
                             <IconButton
                               color="primary"
                               onClick={() => printVoucherSlip(voucher)}
-                              title="Print Voucher"
+                              title="Print Receipt"
                             >
                               <PrintIcon />
                             </IconButton>
@@ -801,7 +810,7 @@ const Vouchers = () => {
         PaperProps={{ sx: { borderRadius: 4 } }}
       >
         <DialogTitle sx={{ fontWeight: 800, color: "#1E293B" }}>
-          ➕ Add Voucher Manually
+          ➕ Add Receiving Stock Manually
         </DialogTitle>
         <Divider />
         <DialogContent>
@@ -857,7 +866,7 @@ const Vouchers = () => {
             color="primary"
             sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
           >
-            Save Voucher
+            Save Receiving Stock
           </Button>
         </DialogActions>
       </Dialog>

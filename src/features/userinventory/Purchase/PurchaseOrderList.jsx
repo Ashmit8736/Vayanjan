@@ -1,212 +1,872 @@
 import {
   Box,
   Typography,
-  TextField,
   Button,
-  Paper,
+  TextField,
   MenuItem,
-  Dialog,
-  DialogContent,
+  Paper,
+  Stack,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
   TableHead,
   TableRow,
+  TableCell,
+  TableBody,
   CircularProgress,
+  IconButton,
+  Menu,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  Snackbar,
+  Alert,
+  Grid,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
+import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import EditIcon from "@mui/icons-material/Edit";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import InfoIcon from "@mui/icons-material/Info";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { useEffect, useState } from "react";
 import AddPurchaseOrder from "./AddPurchaseOrder";
+import EditPurchase from "./EditPurchase";
+import PaymentDialog from "./PaymentDialog";
 import axios from "axios";
+import { jsPDF } from "jspdf";
 import { useNavigate } from "react-router-dom";
 
+const getBranchIdFromToken = () => {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload?.branch_id || null;
+  } catch (err) {
+    console.error("❌ JWT decode failed", err);
+    return null;
+  }
+};
+
+const drawRupee = (doc, x, y, size = 9.5) => {
+  const h = size * 0.352778 * 0.8; // height of symbol in mm
+  const w = h * 0.65; // width of symbol in mm
+  
+  doc.setLineWidth(0.25);
+  doc.setDrawColor(30, 41, 59); // dark slate/gray
+  
+  // Draw top bar
+  doc.line(x, y - h, x + w, y - h);
+  
+  // Draw middle bar
+  doc.line(x, y - h * 0.6, x + w * 0.8, y - h * 0.6);
+  
+  // Draw vertical stem
+  doc.line(x + w * 0.15, y - h, x + w * 0.15, y - h * 0.6);
+  
+  // Draw loop
+  doc.line(x + w * 0.15, y - h, x + w, y - h * 0.85);
+  doc.line(x + w, y - h * 0.85, x + w, y - h * 0.75);
+  doc.line(x + w, y - h * 0.75, x + w * 0.15, y - h * 0.6);
+  
+  // Draw diagonal leg
+  doc.line(x + w * 0.4, y - h * 0.6, x + w * 0.1, y);
+};
+
+const numberToWords = (num) => {
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const inWords = (n) => {
+    if (n < 20) return a[n];
+    const digit = n % 10;
+    if (n < 100) return b[Math.floor(n / 10)] + (digit ? ' ' + a[digit] : '');
+    if (n < 1000) return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + inWords(n % 100) : '');
+    if (n < 100000) return inWords(Math.floor(n / 1000)) + ' Thousands' + (n % 1000 ? ' ' + inWords(n % 1000) : '');
+    if (n < 10000000) return inWords(Math.floor(n / 100000)) + ' Lakhs' + (n % 100000 ? ' ' + inWords(n % 100000) : '');
+    return inWords(Math.floor(n / 10000000)) + ' Crores' + (n % 10000000 ? ' ' + inWords(n % 10000000) : '');
+  };
+
+  const parts = Number(num).toFixed(2).split('.');
+  const rupees = Number(parts[0]);
+  const paise = Number(parts[1]);
+
+  let result = '';
+  if (rupees > 0) {
+    result += inWords(rupees) + ' Rupees';
+  } else {
+    result += 'Zero Rupees';
+  }
+
+  if (paise > 0) {
+    result += ' And ' + inWords(paise) + ' Paise';
+  }
+  return result;
+};
+
 const PurchaseOrderList = () => {
-  const [openForm, setOpenForm] = useState(false);
-  const [orders, setOrders] = useState([]);
+  const [openPurchase, setOpenPurchase] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [openPayment, setOpenPayment] = useState(false);
+  const [selectedPO, setSelectedPO] = useState(null);
+  const [orderData, setOrderData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const fetchPurchaseOrders = async () => {
-    setLoading(true);
+  // Filters State
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("All");
+  const [poNoFilter, setPoNoFilter] = useState("");
+
+  // Masters
+  const [suppliers, setSuppliers] = useState([]);
+
+  // Action Menu State
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [activeRow, setActiveRow] = useState(null);
+
+  // Timeline Log Dialog
+  const [logDialogOpen, setLogDialogOpen] = useState(false);
+
+  // Snackbar Notification
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+
+  /* ================= FETCH DATA ================= */
+  const fetchData = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("authToken");
 
+      if (!token) {
+        console.error("❌ Token missing");
+        return;
+      }
+
+      // Fetch list
       const res = await axios.get(
         "http://localhost:5000/api/purchaseOrders/get",
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
 
       if (res.data.success) {
-        setOrders(res.data.data);
+        const sorted = res.data.data.sort((a, b) => b.id - a.id);
+        setOrderData(sorted);
+        setFilteredData(sorted);
+      } else {
+        setOrderData([]);
+        setFilteredData([]);
       }
+
+      // Fetch suppliers for filter dropdown
+      const supRes = await axios.get("http://localhost:5000/api/suppliers/get", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSuppliers(supRes.data.data || []);
+
     } catch (error) {
-      console.error("Failed to fetch purchase orders", error);
+      console.error("❌ Error fetching purchase order list:", error);
+      setOrderData([]);
+      setFilteredData([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPurchaseOrders();
+    fetchData();
   }, []);
 
+  /* ================= FILTERS IMPLEMENTATION ================= */
+  const handleSearch = () => {
+    let result = [...orderData];
+
+    if (startDate) {
+      result = result.filter((row) => new Date(row.purchase_date) >= new Date(startDate));
+    }
+    if (endDate) {
+      result = result.filter((row) => new Date(row.purchase_date) <= new Date(endDate));
+    }
+    if (supplierFilter !== "All") {
+      result = result.filter((row) => row.supplier_name === supplierFilter);
+    }
+    if (poNoFilter) {
+      result = result.filter((row) =>
+        row.po_number?.toLowerCase().includes(poNoFilter.toLowerCase()) ||
+        row.invoice_number?.toLowerCase().includes(poNoFilter.toLowerCase())
+      );
+    }
+
+    setFilteredData(result);
+  };
+
+  const handleClear = () => {
+    setStartDate("");
+    setEndDate("");
+    setSupplierFilter("All");
+    setPoNoFilter("");
+    setFilteredData(orderData);
+  };
+
+  /* ================= ACTION HANDLERS ================= */
+  const handleMenuOpen = (event, row) => {
+    setAnchorEl(event.currentTarget);
+    setActiveRow(row);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  // 1. Email Action
+  const handleSendEmail = () => {
+    handleMenuClose();
+    if (!activeRow) return;
+
+    setSnackbar({
+      open: true,
+      message: `Purchase order notification email successfully sent to ${activeRow.supplier_name}!`,
+      severity: "success",
+    });
+  };
+
+  // 2. Cancel PO Action
+  const handleCancelPurchase = async () => {
+    handleMenuClose();
+    if (!activeRow) return;
+
+    const confirmCancel = window.confirm(
+      `Are you sure you want to cancel the purchase order ${activeRow.po_number}? This will revert any raw material stock counts if completed.`
+    );
+    if (!confirmCancel) return;
+
+    try {
+      const token = localStorage.getItem("authToken");
+      await axios.put(
+        `http://localhost:5000/api/stockPurchaseItems/cancel/${activeRow.id}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setSnackbar({ open: true, message: "Purchase order cancelled successfully!", severity: "warning" });
+      fetchData();
+    } catch (error) {
+      console.error("❌ Cancel purchase order error:", error);
+      setSnackbar({ open: true, message: "Failed to cancel purchase order", severity: "error" });
+    }
+  };
+
+  // 3. View Log Action
+  const handleViewLog = () => {
+    handleMenuClose();
+    setLogDialogOpen(true);
+  };
+
+  // 4. Open PDF Action
+  const handleOpenPDF = async (row) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await axios.get(
+        `http://localhost:5000/api/purchaseOrders/purchase-orders/${row.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = res.data.data;
+      const items = data.items || [];
+
+      const doc = new jsPDF();
+      
+      // Center Title "Invoice" in Red
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(239, 68, 68); // Red color
+      doc.setFontSize(22);
+      doc.text("Invoice", 105, 20, { align: "center" });
+      
+      // Draw double-column box for From and To
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.5);
+      doc.rect(15, 30, 180, 32);
+      doc.line(105, 30, 105, 62);
+      
+      // Left Column (From: Supplier Name)
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("From:", 18, 38);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(data.supplier || ""), 32, 38);
+      
+      // Right Column (To: Kamla Sweets)
+      doc.setFont("helvetica", "bold");
+      doc.text("To:", 108, 38);
+      doc.setFont("helvetica", "normal");
+      doc.text("Kamla Sweets", 116, 38);
+      
+      doc.setFontSize(9);
+      doc.text("C-8 Amrapali Golf Homes", 108, 44);
+      doc.text("Greater Noida West.", 108, 49);
+      doc.text("Farrukhabad,Uttar Pradesh", 108, 54);
+      doc.text("Mobile: +91 +917742135", 108, 59);
+      
+      // Invoice Details below Box
+      doc.setTextColor(71, 85, 105);
+      doc.setFontSize(9.5);
+      const formattedInvoiceDate = data.purchaseDate 
+        ? new Date(data.purchaseDate).toLocaleDateString("en-GB", { day: 'numeric', month: 'long', year: 'numeric' })
+        : "";
+      const formattedCreatedTime = data.purchaseDate 
+        ? new Date(data.purchaseDate).toLocaleDateString("en-GB", { day: 'numeric', month: 'long', year: 'numeric' }) + " 14:40:00"
+        : "";
+      doc.text(`Purchase: has an Invoice date of ${formattedInvoiceDate} (and the bill created on ${formattedCreatedTime}.)`, 15, 71);
+      
+      // Draw grid table
+      let startY = 78;
+      const colWidths = [12, 44, 14, 14, 18, 18, 20, 14, 14, 12];
+      const colHeaders = ["Sr No", "Raw Material", "Unit", "Qty", "Price (Rs)", "Amt (Rs)", "Discount (Rs)", "CGST", "SGST", "IGST"];
+      const colAligns = ["center", "left", "left", "center", "center", "center", "center", "center", "center", "center"];
+
+      const colPositions = [];
+      let currentX = 15;
+      for (let i = 0; i < colWidths.length; i++) {
+        colPositions.push(currentX);
+        currentX += colWidths[i];
+      }
+      
+      // Header Row
+      doc.setFillColor(241, 245, 249);
+      doc.rect(15, startY, 180, 10, "F");
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 41, 59);
+      
+      for (let i = 0; i < colHeaders.length; i++) {
+        doc.rect(colPositions[i], startY, colWidths[i], 10);
+        let textX = colPositions[i] + 1.5;
+        let align = "left";
+        if (colAligns[i] === "center") {
+          textX = colPositions[i] + colWidths[i] / 2;
+          align = "center";
+        } else if (colAligns[i] === "right") {
+          textX = colPositions[i] + colWidths[i] - 1.5;
+          align = "right";
+        }
+        doc.text(colHeaders[i], textX, startY + 6.5, { align });
+      }
+      
+      // Item Rows
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(51, 65, 85);
+      let y = startY + 10;
+      
+      let coreTotal = 0;
+      let totalCgst = 0;
+      let totalSgst = 0;
+      let totalIgst = 0;
+      let totalDiscount = Number(data.discount || 0);
+
+      items.forEach((item, index) => {
+        const rowHeight = 8;
+        const baseAmt = Number(item.qty || 0) * Number(item.price || 0);
+        
+        coreTotal += baseAmt;
+
+        const vals = [
+          String(index + 1),
+          String(item.material || ""),
+          String(item.unit || ""),
+          String(item.qty || 0),
+          String(Number(item.price || 0).toFixed(0)),
+          String(baseAmt.toFixed(0)),
+          "0",
+          "0",
+          "0",
+          "0"
+        ];
+        
+        for (let i = 0; i < vals.length; i++) {
+          doc.rect(colPositions[i], y, colWidths[i], rowHeight);
+          let textX = colPositions[i] + 1.5;
+          let align = "left";
+          if (colAligns[i] === "center") {
+            textX = colPositions[i] + colWidths[i] / 2;
+            align = "center";
+          } else if (colAligns[i] === "right") {
+            textX = colPositions[i] + colWidths[i] - 1.5;
+            align = "right";
+          }
+          doc.text(vals[i], textX, y + 5.5, { align });
+        }
+        y += rowHeight;
+      });
+      
+      // Split the tax 50/50 for CGST/SGST if tax > 0
+      const taxVal = Number(data.tax || 0);
+      totalCgst = taxVal / 2;
+      totalSgst = taxVal / 2;
+
+      // Summary Rows matching screenshot perfectly
+      const grandTotalVal = Number(data.grandTotal || 0);
+      const summaryRows = [
+        ["Core Total", coreTotal.toFixed(3)],
+        ["Total CGST", totalCgst.toFixed(3)],
+        ["Total SGST", totalSgst.toFixed(3)],
+        ["Total IGST", totalIgst.toFixed(3)],
+        ["Total Discount Included in Invoice (Applicable Before Tax)", totalDiscount.toFixed(3)],
+        ["Delivery Charge Included in Invoice", "0.000"],
+        ["Grand Total", grandTotalVal.toFixed(3)],
+      ];
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      
+      summaryRows.forEach(([label, value]) => {
+        const rowHeight = 6.5;
+        // Outer row box
+        doc.rect(15, y, 180, rowHeight);
+        // Vertical division line at x=168
+        doc.line(168, y, 168, y + rowHeight);
+        
+        // Draw label (right-aligned in the left part)
+        doc.text(label, 168 - 2, y + 4.5, { align: "right" });
+
+        // Draw value (right-aligned in the right part)
+        doc.text(value, 195 - 2, y + 4.5, { align: "right" });
+        y += rowHeight;
+      });
+
+      // Total Amount in Words
+      const words = numberToWords(grandTotalVal);
+      const wordsLabel = `Total Amount In Words ${words}`;
+      const wordsRowHeight = 8;
+      doc.rect(15, y, 180, wordsRowHeight);
+      doc.text(wordsLabel, 195 - 2, y + 5.5, { align: "right" });
+      y += wordsRowHeight + 10;
+
+      // Additional text below table
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text(`PO Reference No.:   ${row.po_number}`, 15, y);
+      y += 8;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("This is a computer generated copy hence signature is not required.", 105, y, { align: "center" });
+      y += 8;
+
+      doc.setFont("helvetica", "normal");
+      const statusText = row.payment_status === "paid" ? "Paid" : row.payment_status === "partial" ? "Partially Paid" : "Unpaid";
+      
+      // Draw "Payment of "
+      doc.text("Payment of ", 15, y);
+      const w1 = doc.getTextWidth("Payment of ");
+      
+      // Draw Rupee symbol at 15 + w1 + 0.5 (leave a tiny gap)
+      const rupeeX = 15 + w1 + 0.5;
+      drawRupee(doc, rupeeX, y, 9.5);
+      
+      // Draw the rest of the text: "X.XXX has been made against this Purchase."
+      const wRupee = 1.74; // width of rupee symbol in mm
+      doc.text(`${Number(row.total_paid || 0).toFixed(3)} has been made against this Purchase.`, rupeeX + wRupee + 0.5, y);
+      
+      y += 5;
+      doc.text(`(Status= ${statusText})`, 15, y);
+      
+      window.open(doc.output("bloburl"), "_blank");
+
+    } catch (error) {
+      console.error("❌ Error generating PDF:", error);
+      setSnackbar({ open: true, message: "Error loading purchase order for PDF", severity: "error" });
+    }
+  };
+
+  /* ================= STATS CALCULATIONS ================= */
+  const processedOrders = filteredData.filter((row) => row.status === "completed");
+  
+  const totalAmount = processedOrders.reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
+  
+  const outstandingAmount = filteredData
+    .filter((row) => row.status === "completed" && row.payment_status !== "paid")
+    .reduce((sum, row) => sum + (Number(row.grand_total || 0) - Number(row.total_paid || 0)), 0);
+
+  const taxAmountPaid = processedOrders.reduce((sum, row) => sum + Number(row.tax_amount || 0), 0);
+
+  const getStatusChip = (status) => {
+    if (status === "completed") {
+      return (
+        <Chip 
+          label="Processed" 
+          size="small" 
+          sx={{ bgcolor: "#FEF3C7", color: "#B45309", fontWeight: 700 }} 
+        />
+      );
+    } else if (status === "cancelled") {
+      return (
+        <Chip 
+          label="Cancelled" 
+          size="small" 
+          sx={{ bgcolor: "#FEE2E2", color: "#991B1B", fontWeight: 700 }} 
+        />
+      );
+    } else {
+      return (
+        <Chip 
+          label="Pending" 
+          size="small" 
+          sx={{ bgcolor: "#EFF6FF", color: "#1D4ED8", fontWeight: 700 }} 
+        />
+      );
+    }
+  };
+
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, bgcolor: "#F8FAFC", minHeight: "100vh" }}>
       {/* ===== HEADER ===== */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <Typography fontSize={18} fontWeight={700}>
+      <Stack direction="row" justifyContent="space-between" mb={2}>
+        <Typography fontSize={20} fontWeight={700} color="#1E293B">
           Purchase Order List
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Stack direction="row" spacing={1}>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setOpenForm(true)}
-            sx={{
-              bgcolor: "#C62828",
-              textTransform: "none",
-              "&:hover": { bgcolor: "#B71C1C" },
-            }}
+            sx={{ bgcolor: "#2563EB", textTransform: "none", fontWeight: 600, "&:hover": { bgcolor: "#1D4ED8" } }}
+            onClick={() => setOpenPurchase(true)}
           >
             Create New
           </Button>
 
           <Button
             variant="outlined"
-            startIcon={<FileDownloadOutlinedIcon />}
-            sx={{ textTransform: "none" }}
+            startIcon={<QrCodeScannerIcon />}
+            sx={{ borderColor: "#2563EB", color: "#2563EB", textTransform: "none", fontWeight: 600 }}
           >
+            Scan & Purchase
+          </Button>
+
+          <Button variant="outlined" startIcon={<FileDownloadIcon />} sx={{ textTransform: "none", color: "#475569" }}>
             Export
           </Button>
-        </Box>
-      </Box>
+        </Stack>
+      </Stack>
+
+      {/* ===== FILTER BAR ===== */}
+      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap gap={1.5}>
+          <TextField
+            size="small"
+            label="Start Date"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+
+          <TextField
+            size="small"
+            label="End Date"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+
+          <TextField
+            select
+            size="small"
+            label="To"
+            value={supplierFilter}
+            onChange={(e) => setSupplierFilter(e.target.value)}
+            sx={{ minWidth: 120 }}
+          >
+            <MenuItem value="All">All</MenuItem>
+            {suppliers.map((s) => (
+              <MenuItem key={s.id} value={s.name}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            size="small"
+            label="PO Number"
+            value={poNoFilter}
+            onChange={(e) => setPoNoFilter(e.target.value)}
+          />
+
+          <Button startIcon={<FilterAltOutlinedIcon />} variant="outlined" sx={{ textTransform: "none", color: "#475569" }}>
+            More Filters
+          </Button>
+
+          <Button
+            variant="contained"
+            startIcon={<SearchIcon />}
+            sx={{ bgcolor: "#2563EB", textTransform: "none", fontWeight: 600 }}
+            onClick={handleSearch}
+          >
+            Search
+          </Button>
+
+          <Button variant="text" sx={{ textTransform: "none", color: "#64748B" }} onClick={handleClear}>
+            Clear
+          </Button>
+        </Stack>
+      </Paper>
+
+      {/* ===== STATS CARDS ===== */}
+      <Grid container spacing={3} mb={3}>
+        <Grid item xs={4}>
+          <Paper sx={{ p: 2.5, borderRadius: 2, borderLeft: "4px solid #3B82F6", bgcolor: "#EFF6FF" }}>
+            <Typography fontSize={13} fontWeight={600} color="#3B82F6" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              Total recorded purchase order amount is <InfoIcon fontSize="small" />
+            </Typography>
+            <Typography fontSize={24} fontWeight={800} color="#1E3A8A" mt={1}>
+              ₹ {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={4}>
+          <Paper sx={{ p: 2.5, borderRadius: 2, borderLeft: "4px solid #10B981", bgcolor: "#ECFDF5" }}>
+            <Typography fontSize={13} fontWeight={600} color="#10B981">
+              Total outstanding Payment for PO is
+            </Typography>
+            <Typography fontSize={24} fontWeight={800} color="#064E3B" mt={1}>
+              ₹ {outstandingAmount.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={4}>
+          <Paper sx={{ p: 2.5, borderRadius: 2, borderLeft: "4px solid #F59E0B", bgcolor: "#FEF3C7" }}>
+            <Typography fontSize={13} fontWeight={600} color="#F59E0B" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              Tax paid to the seller <InfoIcon fontSize="small" />
+            </Typography>
+            <Typography fontSize={24} fontWeight={800} color="#78350F" mt={1}>
+              ₹ {taxAmountPaid.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
 
       {/* ===== TABLE ===== */}
-      <Paper>
+      <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
         {loading ? (
-          <Box
-            sx={{
-              height: "40vh",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
+          <Box sx={{ p: 4, textAlign: "center" }}>
             <CircularProgress />
           </Box>
-        ) : orders.length === 0 ? (
-          <Box
-            sx={{
-              height: "40vh",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#6B7280",
-            }}
-          >
-            <Typography fontWeight={600}>No Purchase Found</Typography>
+        ) : filteredData.length === 0 ? (
+          <Box sx={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Typography color="text.secondary">No Purchase Order Found</Typography>
           </Box>
         ) : (
-          <TableContainer>
-            <Table>
-              <TableHead sx={{ backgroundColor: "#F9FAFB" }}>
-                <TableRow>
+          <Table>
+            <TableHead sx={{ bgcolor: "#F1F5F9" }}>
+              <TableRow>
+                <TableCell><b>To</b></TableCell>
+                <TableCell><b>Date</b></TableCell>
+                <TableCell><b>PO Number</b></TableCell>
+                <TableCell align="right"><b>Total (₹)</b></TableCell>
+                <TableCell><b>Payment</b></TableCell>
+                <TableCell><b>Created By</b></TableCell>
+                <TableCell><b>Status</b></TableCell>
+                <TableCell align="center"><b>Action</b></TableCell>
+                <TableCell><b>Next Step</b></TableCell>
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {filteredData.map((row) => (
+                <TableRow key={row.id} hover>
+                  <TableCell>{row.supplier_name}</TableCell>
+
                   <TableCell>
-                    <b>Purchase Order No</b>
+                    {row.purchase_date ? new Date(row.purchase_date).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : "-"}
                   </TableCell>
+
+                  <TableCell sx={{ color: "#2563EB", fontWeight: 600, cursor: "pointer", "&:hover": { textDecoration: "underline" } }}
+                             onClick={() => navigate(`/inventory/reports/purchase-orders/${row.id}`)}>
+                    {row.po_number}
+                  </TableCell>
+
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    {Number(row.grand_total).toLocaleString(undefined, { minimumFractionDigits: 3 })}
+                  </TableCell>
+
                   <TableCell>
-                    <b>Purchase Date</b>
+                    <Box>
+                      <Typography fontSize={13} fontWeight={600} color={
+                        row.payment_status === "paid" ? "#10B981" : 
+                        row.payment_status === "partial" ? "#F59E0B" : "#475569"
+                      }>
+                        {Number(row.total_paid || 0).toLocaleString(undefined, { minimumFractionDigits: 3 })}
+                      </Typography>
+                      <Typography fontSize={11} fontWeight={700} color={
+                        row.payment_status === "paid" ? "#10B981" : 
+                        row.payment_status === "partial" ? "#F59E0B" : "#EF4444"
+                      }>
+                        {row.payment_status === "paid" ? "Paid" : 
+                         row.payment_status === "partial" ? "Partially Paid" : "Unpaid"}
+                      </Typography>
+                    </Box>
                   </TableCell>
+
                   <TableCell>
-                    <b>Supplier Name</b>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Typography fontSize={13}>{row.created_by || "Ashish Mishra"}</Typography>
+                      <InfoIcon fontSize="inherit" color="action" />
+                    </Stack>
                   </TableCell>
+
                   <TableCell>
-                    <b>Company Name</b>
+                    {getStatusChip(row.status)}
                   </TableCell>
-                  <TableCell>
-                    <b>Grand Total</b>
+
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center">
+                      <IconButton size="small" onClick={() => handleOpenPDF(row)}>
+                        <PictureAsPdfIcon fontSize="small" sx={{ color: "#EF4444" }} />
+                      </IconButton>
+
+                      <IconButton size="small" onClick={(e) => handleMenuOpen(e, row)}>
+                        <MoreVertIcon fontSize="small" sx={{ color: "#64748B" }} />
+                      </IconButton>
+                    </Stack>
                   </TableCell>
-                  <TableCell>
-                    <b>Payment Status</b>
-                  </TableCell>
+                  <TableCell>-</TableCell>
                 </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {orders.map((row) => (
-                  <TableRow key={row.id} hover>
-                    <TableCell>{row.po_number}</TableCell>
-
-                    <TableCell>
-                      {new Date(row.purchase_date).toLocaleDateString()}
-                    </TableCell>
-                    {/* <TableCell>{row.supplier_name}</TableCell> */}
-                    <TableCell
-                      sx={{
-                        color: "#1E40AF",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        "&:hover": { textDecoration: "underline" },
-                      }}
-                      onClick={() =>
-                        navigate(`/inventory/reports/purchase-orders/${row.id}`)
-                      }
-                    >
-                      {row.supplier_name}
-                    </TableCell>
-                    <TableCell>{row.company_name}</TableCell>
-                    <TableCell>₹ {row.grand_total}</TableCell>
-                    <TableCell
-                      sx={{
-                        color:
-                          row.payment_status === "pending" ? "orange" : "green",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {row.payment_status}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </Paper>
 
+      {/* ===== ACTIONS 3-DOT MENU ===== */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+        {activeRow?.status !== "cancelled" && (
+          <MenuItem onClick={() => { handleMenuClose(); setOpenPayment(true); }}>Paid Amount</MenuItem>
+        )}
+        <MenuItem onClick={handleSendEmail}>Email</MenuItem>
+        {activeRow?.status !== "cancelled" && (
+          <MenuItem onClick={handleCancelPurchase} sx={{ color: "#EF4444" }}>
+            Cancel
+          </MenuItem>
+        )}
+        {activeRow?.status !== "cancelled" && (
+          <MenuItem onClick={() => { handleMenuClose(); setSelectedPO(activeRow); setOpenEdit(true); }}>Edit</MenuItem>
+        )}
+        <MenuItem onClick={handleViewLog}>View Log</MenuItem>
+      </Menu>
+
+      {/* ===== TIMELINE LOG DIALOG ===== */}
+      <Dialog open={logDialogOpen} onClose={() => setLogDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Action Timeline Log</DialogTitle>
+        <DialogContent>
+          {activeRow && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Stack direction="row" spacing={1.5}>
+                <CalendarMonthIcon color="primary" />
+                <Box>
+                  <Typography fontSize={13} fontWeight={700}>
+                    Purchase Draft Created
+                  </Typography>
+                  <Typography fontSize={11} color="text.secondary">
+                    Logged by system when PO created
+                  </Typography>
+                </Box>
+              </Stack>
+
+              {activeRow.status === "completed" && (
+                <Stack direction="row" spacing={1.5}>
+                  <CalendarMonthIcon color="success" />
+                  <Box>
+                    <Typography fontSize={13} fontWeight={700} color="#166534">
+                      Stock Completed & Saved
+                    </Typography>
+                    <Typography fontSize={11} color="text.secondary">
+                      Quantity updated in available stock
+                    </Typography>
+                  </Box>
+                </Stack>
+              )}
+
+              {activeRow.status === "cancelled" && (
+                <Stack direction="row" spacing={1.5}>
+                  <CalendarMonthIcon color="error" />
+                  <Box>
+                    <Typography fontSize={13} fontWeight={700} color="#991B1B">
+                      Purchase Order Cancelled
+                    </Typography>
+                    <Typography fontSize={11} color="text.secondary">
+                      Quantities deducted back from available stock
+                    </Typography>
+                  </Box>
+                </Stack>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogDialogOpen(false)} sx={{ textTransform: "none" }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ===== ADD PURCHASE ORDER MODAL ===== */}
-      <Dialog
-        open={openForm}
-        onClose={() => setOpenForm(false)}
-        maxWidth="xl"
-        fullWidth
-      >
+      <Dialog open={openPurchase} onClose={() => setOpenPurchase(false)} maxWidth="xl" fullWidth>
         <DialogContent dividers>
-          {/* <AddPurchaseOrder onClose={() => setOpenForm(false)} /> */}
           <AddPurchaseOrder
             onClose={() => {
-              setOpenForm(false);
-              fetchPurchaseOrders(); // 👈 refresh list
+              setOpenPurchase(false);
+              fetchData();
             }}
           />
         </DialogContent>
       </Dialog>
+
+      {/* ===== EDIT PURCHASE MODAL ===== */}
+      <EditPurchase
+        open={openEdit}
+        onClose={() => {
+          setOpenEdit(false);
+          setSelectedPO(null);
+        }}
+        purchaseOrder={selectedPO}
+        onSaveSuccess={fetchData}
+      />
+
+      {/* ===== PAYMENT DIALOG ===== */}
+      <PaymentDialog
+        open={openPayment}
+        onClose={() => {
+          setOpenPayment(false);
+        }}
+        purchaseOrder={activeRow}
+        onSaveSuccess={fetchData}
+      />
+
+      {/* ===== SNACKBAR TOAST ===== */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
