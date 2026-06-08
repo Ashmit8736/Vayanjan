@@ -265,6 +265,7 @@ const PurchaseOrderList = () => {
   };
 
   // 3. View Log Action
+  
   const handleViewLog = () => {
     handleMenuClose();
     setLogDialogOpen(true);
