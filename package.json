@@ -5,13 +5,12 @@
   "main": "dist-electron/main.js",
   "author": "Vyanjan Team",
   "license": "MIT",
-  
   "private": true,
   "scripts": {
-  "start": "vite",
-  "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron . --no-sandbox --disable-gpu",
-  "dev": "concurrently -k \"cross-env BROWSER=none npm run start\" \"npm run electron\""
-},
+    "start": "vite",
+    "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron . --no-sandbox --disable-gpu",
+    "dev": "concurrently -k \"cross-env BROWSER=none npm run start\" \"npm run electron\""
+  },
   "dependencies": {
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
@@ -26,7 +25,8 @@
     "react-dom": "^18.2.0",
     "react-redux": "^9.1.0",
     "react-router-dom": "^6.22.0",
-    "recharts": "^3.7.0"
+    "recharts": "^3.7.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
