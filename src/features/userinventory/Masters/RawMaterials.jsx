@@ -101,7 +101,7 @@ const RawMaterials = () => {
       {/* ================= HEADER ================= */}
       <Box sx={{ display: "flex", justifycontent: "space-between", mb: 2 }}>
         <Typography variant="h6" fontWeight={700}>
-          Raw Materials Management
+          Raw Materials Management 
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1 }}>

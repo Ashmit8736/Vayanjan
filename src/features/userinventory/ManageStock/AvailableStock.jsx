@@ -25,6 +25,13 @@ const AvailableStock = () => {
   const [reasons, setReasons] = useState({});
   const [comments, setComments] = useState({});
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
+
+
+  
+
   // 🔹 API CALL (GET AVAILABLE STOCK)
   const fetchStock = async () => {
     const token = localStorage.getItem("authToken");
@@ -110,12 +117,18 @@ const AvailableStock = () => {
   };
 
 
+
+  const filteredStock = stockData.filter((row) =>
+  row.raw_material_name.toLowerCase().includes(searchQuery.toLowerCase())
+);
+
+
   return (
     <Box p={3}>
       {/* ================= HEADER ================= */}
       <Box display="flex" justifyContent="space-between" mb={2}>
         <Typography variant="h6" fontWeight={700}>
-          Available Stock
+          Available Stock 
         </Typography>
 
         <Button
@@ -154,9 +167,26 @@ const AvailableStock = () => {
           <Button variant="outlined" color="error">
             Load
           </Button>
-          <Button variant="outlined">Clear</Button>
+          <Button variant="outlined" onClick={() => setSearchQuery("")}>
+  Clear
+</Button>
         </Box>
       </Paper>
+
+<TextField
+  label="Search Raw Material"
+  size="small"
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  placeholder="Type to search..."
+  sx={{ minWidth: 220 }}
+/>
+
+
+
+
+
+
 
       {/* ================= TABLE ================= */}
       <Paper>
@@ -175,7 +205,7 @@ const AvailableStock = () => {
           </TableHead>
 
           <TableBody>
-  {stockData.map((row) => (
+  {filteredStock.map((row) => (
     <TableRow key={row.raw_material_id}>
       {/* CATEGORY */}
       <TableCell>

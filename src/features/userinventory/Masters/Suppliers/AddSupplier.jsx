@@ -7,10 +7,10 @@ import {
   Button,
   MenuItem,
 } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 
-const AddSupplier = ({ onClose }) => {
+const AddSupplier = ({ onClose, editSupplier }) => {
   const [form, setForm] = useState({
     name: "",
     company_name: "",
@@ -39,6 +39,38 @@ const AddSupplier = ({ onClose }) => {
     tcs_percentage: 0.1,
   });
 
+  useEffect(() => {
+    if (editSupplier) {
+      setForm({
+        name: editSupplier.name || "",
+        company_name: editSupplier.company_name || "",
+        email: editSupplier.email || "",
+        phone: editSupplier.phone || "",
+
+        gst_number: editSupplier.gst_number || "",
+        pan: editSupplier.pan || "",
+        fssai_license: editSupplier.fssai_license || "",
+        msme_number: editSupplier.msme_number || "",
+        tan: editSupplier.tan || "",
+        cin: editSupplier.cin || "",
+
+        billing_address: editSupplier.billing_address || "",
+        billing_state: editSupplier.billing_state || "Uttar Pradesh",
+        billing_city: editSupplier.billing_city || "",
+        billing_pincode: editSupplier.billing_pincode || "",
+
+        shipping_address: editSupplier.shipping_address || "",
+        shipping_state: editSupplier.shipping_state || "Uttar Pradesh",
+        shipping_city: editSupplier.shipping_city || "",
+        shipping_pincode: editSupplier.shipping_pincode || "",
+
+        tcs_applicable: editSupplier.tcs_applicable !== undefined ? editSupplier.tcs_applicable : 1,
+        tcs_type: editSupplier.tcs_type || "purchase",
+        tcs_percentage: editSupplier.tcs_percentage !== undefined ? editSupplier.tcs_percentage : 0.1,
+      });
+    }
+  }, [editSupplier]);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -54,25 +86,35 @@ const AddSupplier = ({ onClose }) => {
     try {
       const token = localStorage.getItem("authToken");
 
-      await axios.post(
-        "http://localhost:5000/api/suppliers/create",
-        form,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      if (editSupplier) {
+        await axios.put(
+          `http://localhost:5000/api/suppliers/${editSupplier.id}`,
+          form,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } else {
+        await axios.post(
+          "http://localhost:5000/api/suppliers/create",
+          form,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
 
       onClose();
     } catch (error) {
       console.error(error);
-      alert("Failed to add supplier");
+      alert(`Failed to ${editSupplier ? "update" : "add"} supplier`);
     }
   };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography fontSize={18} fontWeight={700} mb={2}>
-        Add Supplier / Third Party
+        {editSupplier ? "Edit Supplier / Third Party" : "Add Supplier / Third Party"}
       </Typography>
 
       {/* ================= BASIC DETAILS ================= */}

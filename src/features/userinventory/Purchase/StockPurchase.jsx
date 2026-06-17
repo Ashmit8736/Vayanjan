@@ -128,6 +128,7 @@ const StockPurchase = () => {
 
   // Action Menu State
   const [anchorEl, setAnchorEl] = useState(null);
+  const [exportAnchorEl, setExportAnchorEl] = useState(null);
   const [activeRow, setActiveRow] = useState(null);
 
   // Timeline Log Dialog
@@ -501,13 +502,98 @@ const StockPurchase = () => {
       y += 5;
       doc.text(`(Status= ${statusText})`, 15, y);
       
-      window.open(doc.output("bloburl"), "_blank");
+      doc.save(`Purchase_Invoice_${row.invoice_number || row.po_number}.pdf`);
 
     } catch (error) {
       console.error("❌ Error generating PDF:", error);
       setSnackbar({ open: true, message: "Error loading purchase items for PDF", severity: "error" });
     }
   };
+
+
+
+/* ================= EXPORT ================= */
+
+const exportCSV = (data, fileName) => {
+  const headers = [
+    "Supplier",
+    "Invoice Date",
+    "Invoice Number",
+    "PO Number",
+    "Grand Total",
+    "Payment Status",
+    "Total Paid",
+    "Status",
+    "Created By",
+  ];
+
+  const rows = data.map((row) => [
+    row.supplier_name || "",
+    row.invoice_date
+      ? new Date(row.invoice_date).toLocaleDateString("en-GB")
+      : "",
+    row.invoice_number || "",
+    row.po_number || "",
+    row.grand_total || 0,
+    row.payment_status || "",
+    row.total_paid || 0,
+    row.status || "",
+    row.created_by || "",
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const link = document.createElement("a");
+  const url = window.URL.createObjectURL(blob);
+
+  link.href = url;
+  link.setAttribute("download", fileName);
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  window.URL.revokeObjectURL(url);
+};
+
+const handleExportCurrentPage = () => {
+  exportCSV(
+    filteredData,
+    `Purchase_Current_Page_${Date.now()}.csv`
+  );
+
+  setExportAnchorEl(null);
+
+  setSnackbar({
+    open: true,
+    message: "Current Page Exported Successfully",
+    severity: "success",
+  });
+};
+
+const handleExportAll = () => {
+  exportCSV(
+    stockData,
+    `Purchase_All_Data_${Date.now()}.csv`
+  );
+
+  setExportAnchorEl(null);
+
+  setSnackbar({
+    open: true,
+    message: "All Data Exported Successfully",
+    severity: "success",
+  });
+};
+
 
   /* ================= STATS CALCULATIONS ================= */
   const savedPurchases = filteredData.filter((row) => row.status === "completed");
@@ -525,7 +611,7 @@ const StockPurchase = () => {
       {/* ===== HEADER ===== */}
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography fontSize={20} fontWeight={700} color="#1E293B">
-          Purchase List
+          Purchase List 
         </Typography>
 
         <Stack direction="row" spacing={1}>
@@ -546,9 +632,33 @@ const StockPurchase = () => {
             Scan & Purchase
           </Button>
 
-          <Button variant="outlined" startIcon={<FileDownloadIcon />} sx={{ textTransform: "none", color: "#475569" }}>
-            Export
-          </Button>
+          <>
+  <Button
+    variant="outlined"
+    startIcon={<FileDownloadIcon />}
+    onClick={(e) => setExportAnchorEl(e.currentTarget)}
+    sx={{
+      textTransform: "none",
+      color: "#475569",
+    }}
+  >
+    Export
+  </Button>
+
+  <Menu
+    anchorEl={exportAnchorEl}
+    open={Boolean(exportAnchorEl)}
+    onClose={() => setExportAnchorEl(null)}
+  >
+    <MenuItem onClick={handleExportCurrentPage}>
+      Export Current Page
+    </MenuItem>
+
+    <MenuItem onClick={handleExportAll}>
+      Export All
+    </MenuItem>
+  </Menu>
+</>
         </Stack>
       </Stack>
 
