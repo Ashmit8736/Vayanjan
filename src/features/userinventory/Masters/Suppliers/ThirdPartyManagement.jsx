@@ -26,6 +26,7 @@ const ThirdPartyManagement = () => {
   const [openForm, setOpenForm] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [editSupplier, setEditSupplier] = useState(null);
 
 const fetchSuppliers = async () => {
   try {
@@ -69,13 +70,16 @@ useEffect(() => {
         }}
       >
         <Typography fontSize={18} fontWeight={700}>
-          Supplier / Third Party Management
+          Supplier / Third Party Management 
         </Typography>
 
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => setOpenForm(true)}
+          onClick={() => {
+            setEditSupplier(null);
+            setOpenForm(true);
+          }}
           sx={{
             bgcolor: "#C62828",
             textTransform: "none",
@@ -149,7 +153,13 @@ useEffect(() => {
                   </TableCell>
 
                   <TableCell align="center">
-                    <IconButton size="small">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setEditSupplier(row);
+                        setOpenForm(true);
+                      }}
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton size="small">
@@ -178,15 +188,20 @@ useEffect(() => {
       {/* ===== ADD SUPPLIER MODAL ===== */}
       <Dialog
         open={openForm}
-        onClose={() => setOpenForm(false)}
+        onClose={() => {
+          setOpenForm(false);
+          setEditSupplier(null);
+        }}
         maxWidth="lg"
         fullWidth
       >
         <DialogContent dividers>
           <AddSupplier
+            editSupplier={editSupplier}
             onClose={() => {
               setOpenForm(false);
-              fetchSuppliers(); // refresh list after add
+              setEditSupplier(null);
+              fetchSuppliers(); // refresh list after add/edit
             }}
           />
         </DialogContent>
@@ -196,3 +211,17 @@ useEffect(() => {
 };
 
 export default ThirdPartyManagement;
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -33,6 +33,8 @@ import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import InfoIcon from "@mui/icons-material/Info";
+    
+
 
 const ProductionMaster = () => {
   const [items, setItems] = useState([]);
@@ -55,6 +57,8 @@ const ProductionMaster = () => {
     materials: [],
   });
 
+
+  
   // Logs Dialog States
   const [openLogs, setOpenLogs] = useState(false);
   const [selectedLogsItem, setSelectedLogsItem] = useState(null);
@@ -191,6 +195,7 @@ const ProductionMaster = () => {
   const categories = ["All", ...new Set(items.map(item => item.category).filter(Boolean))];
 
   /* ================= EDIT DIALOG OPEN ================= */
+  const [isCreateMode, setIsCreateMode] = useState(false);
   const handleEditClick = async (item) => {
     setSelectedItem(item);
     const itemId = item.item_id || item.id;
@@ -334,22 +339,96 @@ const ProductionMaster = () => {
     return rm ? rm.name : "";
   };
 
+
+
+  const handleCreateNew = () => {
+  setIsCreateMode(true);
+
+  setEditForm({
+    item_id: "",
+    production_name: "",
+    raw_material_id: "",
+    quantity: "1",
+    unit_id: units[0]?.id || "",
+    materials: [
+      {
+        raw_material_id: "",
+        quantity: "",
+        consume_unit_id: "",
+      },
+    ],
+  });
+
+  setOpenEdit(true);
+};
+
+
+
+const handleCreateProduction = async () => {
+  const payload = {
+    production_name: editForm.production_name,
+    raw_material_id: Number(editForm.raw_material_id),
+    quantity: Number(editForm.quantity),
+    unit_id: Number(editForm.unit_id),
+
+    materials: editForm.materials.map((m) => ({
+      raw_material_id: Number(m.raw_material_id),
+      quantity: Number(m.quantity),
+      consume_unit_id: Number(m.consume_unit_id),
+    })),
+  };
+
+  try {
+    const res = await fetch(
+      "http://localhost:5000/api/recipe/create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert("Production Created Successfully");
+      setOpenEdit(false);
+      fetchData();
+    } else {
+      alert(result.message);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
+
   return (
     <Box p={3} bgcolor="#F8FAFC" minHeight="100vh">
       {/* ================= HEADER (FIRST IMAGE) ================= */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5" fontWeight={800} color="#1E293B">
-          Production List
+          Production List 
         </Typography>
 
         <Stack direction="row" spacing={1.5}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            sx={{ bgcolor: "#2563EB", fontWeight: 600, "&:hover": { bgcolor: "#1D4ED8" }, borderRadius: 2 }}
-          >
-            Create New
-          </Button>
+        <Button
+  variant="contained"
+  startIcon={<AddIcon />}
+  onClick={handleCreateNew}
+  sx={{
+    bgcolor: "#2563EB",
+    fontWeight: 600,
+    "&:hover": {
+      bgcolor: "#1D4ED8",
+    },
+    borderRadius: 2,
+  }}
+>
+  Create New
+</Button>
           <Button variant="outlined" sx={{ borderRadius: 2, textTransform: "none", color: "#64748B", borderColor: "#CBD5E1" }}>
             Action ∨
           </Button>
@@ -467,12 +546,11 @@ const ProductionMaster = () => {
           sx: { borderRadius: 4, overflow: "hidden" }
         }}
       >
-        <DialogTitle sx={{ fontWeight: 800, fontSize: "1.25rem", py: 2 }}>
-          Edit Production Process
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Create or modify production process you just need to add from and to raw material here
-          </Typography>
-        </DialogTitle>
+        <DialogTitle>
+  {isCreateMode
+    ? "Create Production Process"
+    : "Edit Production Process"}
+</DialogTitle>
         <Divider />
 
         <DialogContent sx={{ bgcolor: "#F8FAFC", py: 3, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -705,9 +783,15 @@ const ProductionMaster = () => {
           <Button onClick={() => setOpenEdit(false)} variant="outlined" sx={{ textTransform: "none", color: "#64748B", borderColor: "#CBD5E1", px: 3, borderRadius: 2 }}>
             Cancel
           </Button>
-          <Button onClick={handleSaveEdit} variant="contained" sx={{ bgcolor: "#2563EB", px: 3, borderRadius: 2, fontWeight: 600, "&:hover": { bgcolor: "#1D4ED8" } }}>
-            Save Changes
-          </Button>
+         <Button
+  onClick={
+    isCreateMode
+      ? handleCreateProduction
+      : handleSaveEdit
+  }
+>
+  {isCreateMode ? "Save" : "Save Changes"}
+</Button>
         </DialogActions>
       </Dialog>
 
