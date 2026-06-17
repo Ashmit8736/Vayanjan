@@ -116,7 +116,7 @@ const printVoucherSlip = (voucher) => {
   </div>
 
   <div class="header">
-    <h1>PetPooja Receiving Stock</h1>
+    <h1>Kamla Sweets</h1>
     <div>Branch ID: ${voucher.branch_id || 'Main'}</div>
     <div>Receipt Slip</div>
   </div>
