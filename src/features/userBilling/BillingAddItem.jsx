@@ -15,6 +15,25 @@ import Autocomplete from "@mui/material/Autocomplete";
 import { createItem, getItemsList, updateItem } from "@services/api/itemAPI";
 import { useNavigate } from "react-router-dom";
 
+const getStockLabel = (stock_status) => {
+  if (!stock_status) return "Stock";
+  const text = String(stock_status).trim().toLowerCase();
+  if (text.includes("out")) return "Out of Stock";
+  if (text.includes("in")) return "Stock";
+  if (text.includes("track")) return "Stock";
+  return stock_status;
+};
+
+const getUnitDisplay = (item) => {
+  if (item?.item_unit_name) {
+    return item.item_unit_symbol
+      ? `${item.item_unit_name} (${item.item_unit_symbol})`
+      : item.item_unit_name;
+  }
+  if (item?.item_unit_symbol) return item.item_unit_symbol;
+  return "-";
+};
+
 // ─── Inline Styles ────────────────────────────────────────────────────────────
 const S = {
   root: {
@@ -288,6 +307,9 @@ const BillingAddItem = () => {
   const [category, setCategory] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [shortCode, setShortCode] = useState("");
+  const [originalQty, setOriginalQty] = useState("");
+  const [remainingQty, setRemainingQty] = useState("");
+  const [stockStatus, setStockStatus] = useState("In Stock");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -360,6 +382,9 @@ const BillingAddItem = () => {
     setCategory("");
     setSellingPrice("");
     setShortCode("");
+    setOriginalQty("");
+    setRemainingQty("");
+    setStockStatus("In Stock");
     setFormError("");
     setFormSuccess("");
     setEditingItem(null);
@@ -376,6 +401,9 @@ const BillingAddItem = () => {
     setCategory(item.category || "");
     setSellingPrice(item.selling_price || "");
     setShortCode(item.short_code || "");
+    setOriginalQty(item.original_qty || 0);
+    setRemainingQty(item.remaining_qty || 0);
+    setStockStatus(item.stock_status || "In Stock");
     setFormError("");
     setFormSuccess("");
     setDialogOpen(true);
@@ -428,9 +456,11 @@ const BillingAddItem = () => {
       category: category.trim(),
       selling_price: Number(sellingPrice) || 0,
       short_code: shortCode.trim(),
-      stock_status: editingItem?.stock_status || "Do Not Track",
+      stock_status: stockStatus,
       item_unit_id: editingItem?.item_unit_id || null,
       favorite: editingItem?.favorite ? 1 : 0,
+      original_qty: Number(originalQty || 0),
+      remaining_qty: editingItem ? Number(remainingQty || 0) : Number(originalQty || 0),
     };
 
     try {
@@ -522,6 +552,54 @@ const BillingAddItem = () => {
               value={sellingPrice}
               onChange={(e) => setSellingPrice(e.target.value)}
             />
+
+            <label style={S.label}>{editingItem ? "Original Quantity" : "Quantity"}</label>
+            <input
+              style={S.input}
+              type="number"
+              placeholder="0"
+              min="0"
+              value={originalQty}
+              onChange={(e) => {
+                const val = e.target.value;
+                setOriginalQty(val);
+                if (editingItem) {
+                  const diff = Number(val) - Number(editingItem.original_qty || 0);
+                  setRemainingQty(prev => {
+                    if (Number(prev || 0) === 0 || prev === "") {
+                      return val;
+                    }
+                    return String(Math.max(0, Number(prev || 0) + (diff > 0 ? diff : 0)));
+                  });
+                }
+              }}
+            />
+
+            {editingItem && (
+              <>
+                <label style={S.label}>Remaining Quantity</label>
+                <input
+                  style={S.input}
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  value={remainingQty}
+                  onChange={(e) => setRemainingQty(e.target.value)}
+                />
+              </>
+            )}
+
+            <label style={S.label}>Stock Status</label>
+            <select
+              style={S.input}
+              value={stockStatus}
+              onChange={(e) => setStockStatus(e.target.value)}
+            >
+              <option value="In Stock">Track Stock (In Stock)</option>
+              <option value="Out of Stock">Track Stock (Out of Stock)</option>
+              <option value="Do Not Track">Do Not Track (Always Available)</option>
+            </select>
+
             {formError && <div style={S.errorMsg}>⚠ {formError}</div>}
             {formSuccess && <div style={S.successMsg}>✓ {formSuccess}</div>}
           </Box>
@@ -579,18 +657,21 @@ const BillingAddItem = () => {
               <th style={S.th}>Category</th>
               <th style={S.th}>Short Code</th>
               <th style={S.th}>Stock Status</th>
+              <th style={S.th}>Original Qty</th>
+              <th style={S.th}>Remaining Qty</th>
               <th style={S.th}>Favorite</th>
               <th style={S.th}>Price</th>
+              <th style={S.th}>Unit Name</th>
               <th style={S.th}>Unit</th>
               <th style={S.th}>Action</th>
             </tr>
           </thead>
           <tbody>
             {listLoading ? (
-              <tr><td colSpan={9} style={S.loaderRow}>Loading items…</td></tr>
+              <tr><td colSpan={12} style={S.loaderRow}>Loading items…</td></tr>
             ) : listError ? (
               <tr>
-                <td colSpan={9} style={{ ...S.emptyRow, color: "#ef4444" }}>
+                <td colSpan={12} style={{ ...S.emptyRow, color: "#ef4444" }}>
                   {listError}
                   <span
                     style={{ marginLeft: 8, color: "#c0392b", cursor: "pointer", textDecoration: "underline" }}
@@ -601,7 +682,7 @@ const BillingAddItem = () => {
                 </td>
               </tr>
             ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={9} style={S.emptyRow}>No items found.</td></tr>
+              <tr><td colSpan={12} style={S.emptyRow}>No items found.</td></tr>
             ) : (
               filteredItems.map((item, idx) => (
                 <tr
@@ -617,7 +698,9 @@ const BillingAddItem = () => {
                     <span style={S.catTag}>{item.category || "Uncategorized"}</span>
                   </td>
                   <td style={S.td}>{item.short_code || "-"}</td>
-                  <td style={S.td}>{item.stock_status || "Do Not Track"}</td>
+                  <td style={S.td}>{getStockLabel(item.stock_status)}</td>
+                  <td style={S.td}>{item.original_qty ?? 0}</td>
+                  <td style={S.td}>{item.remaining_qty ?? 0}</td>
                   <td style={S.td}>
                     <input
                       type="checkbox"
@@ -628,9 +711,9 @@ const BillingAddItem = () => {
                   <td style={S.td}>
                     <span style={S.priceBadge}>₹{item.selling_price || 0}</span>
                   </td>
+                  <td style={S.td}>{item.item_unit_name || "-"}</td>
                   <td style={{ ...S.td, color: "#6b7280" }}>
-                    {item.item_unit_name || "-"}
-                    {item.item_unit_symbol ? ` (${item.item_unit_symbol})` : ""}
+                    {item.item_unit_symbol || "pcs"}
                   </td>
                   <td style={S.td}>
                     <button

@@ -39,7 +39,10 @@ const ItemCreation = () => {
     name: "",
     category: "Sweet",
     selling_price: "",
-    item_unit_id: ""
+    item_unit_id: "",
+    original_qty: "",
+    remaining_qty: "",
+    stock_status: "In Stock"
   });
   const [editSaving, setEditSaving] = useState(false);
 
@@ -112,7 +115,10 @@ const ItemCreation = () => {
       name: item.name,
       category: item.category || "Sweet",
       selling_price: item.selling_price,
-      item_unit_id: item.item_unit_id || ""
+      item_unit_id: item.item_unit_id || "",
+      original_qty: item.original_qty || 0,
+      remaining_qty: item.remaining_qty || 0,
+      stock_status: item.stock_status || "In Stock"
     });
     setEditOpen(true);
   };
@@ -135,7 +141,10 @@ const ItemCreation = () => {
           name: editForm.name,
           category: editForm.category,
           selling_price: Number(editForm.selling_price),
-          item_unit_id: editForm.item_unit_id ? Number(editForm.item_unit_id) : null
+          item_unit_id: editForm.item_unit_id ? Number(editForm.item_unit_id) : null,
+          original_qty: Number(editForm.original_qty || 0),
+          remaining_qty: Number(editForm.remaining_qty || 0),
+          stock_status: editForm.stock_status
         })
       });
 
@@ -242,6 +251,8 @@ const ItemCreation = () => {
               <TableCell>Category</TableCell>
               <TableCell>Selling Price</TableCell>
               <TableCell>Unit</TableCell>
+              <TableCell>Original Qty</TableCell>
+              <TableCell>Remaining Qty</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -249,13 +260,13 @@ const ItemCreation = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={8} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={8} align="center">
                   No data found
                 </TableCell>
               </TableRow>
@@ -267,6 +278,8 @@ const ItemCreation = () => {
                   <TableCell>{item.category}</TableCell>
                   <TableCell>₹ {item.selling_price}</TableCell>
                   <TableCell>{item.item_unit_symbol || "-"}</TableCell>
+                  <TableCell>{item.original_qty ?? 0}</TableCell>
+                  <TableCell>{item.remaining_qty ?? 0}</TableCell>
                   <TableCell align="center">
                     <IconButton sx={iconBtn} onClick={() => handleOpenLogs(item)}>
                       <ContentPaste fontSize="small" />
@@ -352,6 +365,47 @@ const ItemCreation = () => {
             type="number"
             value={editForm.selling_price}
             onChange={(e) => setEditForm(prev => ({ ...prev, selling_price: e.target.value }))}
+            fullWidth
+          />
+
+          <TextField
+            select
+            label="Stock Status"
+            value={editForm.stock_status}
+            onChange={(e) => setEditForm(prev => ({ ...prev, stock_status: e.target.value }))}
+            fullWidth
+          >
+            <MenuItem value="In Stock">Track Stock (In Stock)</MenuItem>
+            <MenuItem value="Out of Stock">Track Stock (Out of Stock)</MenuItem>
+            <MenuItem value="Do Not Track">Do Not Track (Always Available)</MenuItem>
+          </TextField>
+
+          <TextField
+            label="Original Quantity"
+            type="number"
+            value={editForm.original_qty}
+            onChange={(e) => {
+              const val = e.target.value;
+              setEditForm(prev => {
+                const diff = Number(val) - Number(prev.original_qty || 0);
+                const newRemaining = Number(prev.remaining_qty || 0) === 0 || prev.remaining_qty === ""
+                  ? val
+                  : String(Math.max(0, Number(prev.remaining_qty || 0) + (diff > 0 ? diff : 0)));
+                return {
+                  ...prev,
+                  original_qty: val,
+                  remaining_qty: newRemaining
+                };
+              });
+            }}
+            fullWidth
+          />
+
+          <TextField
+            label="Remaining Quantity"
+            type="number"
+            value={editForm.remaining_qty}
+            onChange={(e) => setEditForm(prev => ({ ...prev, remaining_qty: e.target.value }))}
             fullWidth
           />
         </DialogContent>

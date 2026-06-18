@@ -77,6 +77,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { printInvoiceWithIframe } from "./printHelper";
 import {
   Box,
   Typography,
@@ -181,6 +182,27 @@ const Invoices = () => {
       console.error("Error fetching invoices:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePrintInvoice = async (invoiceNumber) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/invoices/details/${invoiceNumber}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        printInvoiceWithIframe(data.data);
+      } else {
+        alert(data.message || "Failed to fetch invoice details");
+      }
+    } catch (err) {
+      console.error("Print invoice error:", err);
+      alert("Failed to load invoice details for printing");
     }
   };
 
@@ -470,11 +492,22 @@ const Invoices = () => {
                 </TableCell>
 
                 <TableCell align="right">
-                  <IconButton color="primary">
+                  <IconButton 
+                    color="primary" 
+                    onClick={() => {
+                      const finalNo = inv.invoice_number || inv.id;
+                      window.open(`${window.location.origin}/#/public/invoice/${finalNo}`, "_blank");
+                    }}
+                    title="View E-Bill"
+                  >
                     <VisibilityIcon />
                   </IconButton>
 
-                  <IconButton color="success">
+                  <IconButton 
+                    color="success"
+                    onClick={() => handlePrintInvoice(inv.invoice_number || inv.id)}
+                    title="Download / Print"
+                  >
                     <DownloadIcon />
                   </IconButton>
                 </TableCell>

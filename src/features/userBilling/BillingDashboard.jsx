@@ -5,6 +5,8 @@ import { BillingSidebar } from "./BillingSidebar";
 import BillingHome from "./BillingHome";
 import BillingItems from "./BillingItems";
 import BillingAddItem from "./BillingAddItem";
+import BillingTables from "./BillingTables";
+import BillingTableView from "./BillingTableView";
 import Invoices from "./Invoices";
 import Payments from "./Payments";
 import Reports from "./Reports";
@@ -27,6 +29,8 @@ const BillingDashboard = () => {
           <Route index element={<BillingHome />} />
           <Route path="items" element={<BillingItems />} />
           <Route path="add-item" element={<BillingAddItem />} />
+          <Route path="tables" element={<BillingTables />} />
+          <Route path="table-view" element={<BillingTableView />} />
           <Route path="vouchers" element={<Vouchers />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="payments" element={<Payments />} />
