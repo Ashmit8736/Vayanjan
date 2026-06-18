@@ -24,12 +24,24 @@ const UnitManagement = () => {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // create form state
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterQuery, setFilterQuery] = useState("");
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Edit / Create states
+  const [editUnit, setEditUnit] = useState(null);
   const [openForm, setOpenForm] = useState(false);
   const [formData, setFormData] = useState({
     unit_name: "",
     unit_symbol: "",
   });
+
+  // View state
+  const [viewUnit, setViewUnit] = useState(null);
 
   useEffect(() => {
     fetchUnits();
@@ -64,24 +76,28 @@ const UnitManagement = () => {
     return new Date(date).toISOString().split("T")[0];
   };
 
-  /* ===== CREATE FORM HANDLERS ===== */
+  /* ===== CREATE/EDIT FORM HANDLERS ===== */
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-const handleSave = async () => {
-  if (!formData.unit_name || !formData.unit_symbol) {
-    alert("Please fill all fields");
-    return;
-  }
+  const handleSave = async () => {
+    if (!formData.unit_name || !formData.unit_symbol) {
+      alert("Please fill all fields");
+      return;
+    }
 
-  try {
-    const res = await fetch(
-      "http://localhost:5000/api/units/addUnit",
-      {
-        method: "POST",
+    try {
+      const url = editUnit
+        ? `http://localhost:5000/api/units/updateUnit/${editUnit.id}`
+        : "http://localhost:5000/api/units/addUnit";
+
+      const method = editUnit ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -89,30 +105,78 @@ const handleSave = async () => {
           unit_name: formData.unit_name,
           unit_symbol: formData.unit_symbol,
         }),
+      });
+
+      const result = await res.json();
+      console.log("SAVE UNIT RESPONSE:", result);
+
+      if (!res.ok) {
+        alert(result.message || `Failed to ${editUnit ? "update" : "add"} unit`);
+        return;
       }
-    );
 
-    const result = await res.json();
-    console.log("ADD UNIT RESPONSE:", result);
+      // ✅ SUCCESS
+      setOpenForm(false);
+      setEditUnit(null);
+      setFormData({ unit_name: "", unit_symbol: "" });
 
-    if (!res.ok) {
-      alert(result.message || "Failed to add unit");
+      // 🔥 MOST IMPORTANT LINE
+      fetchUnits(); // ← GET API fir se call hoti hai
+    } catch (error) {
+      console.error("Save unit error:", error);
+      alert("Server error");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this unit?")) {
       return;
     }
 
-    // ✅ SUCCESS
-    setOpenForm(false);
-    setFormData({ unit_name: "", unit_symbol: "" });
+    try {
+      const res = await fetch(`http://localhost:5000/api/units/deleteUnit/${id}`, {
+        method: "DELETE",
+      });
 
-    // 🔥 MOST IMPORTANT LINE
-    fetchUnits(); // ← yahin GET API fir se call hoti hai
+      const result = await res.json();
+      console.log("DELETE UNIT RESPONSE:", result);
 
-  } catch (error) {
-    console.error("Add unit error:", error);
-    alert("Server error");
-  }
-};
+      if (!res.ok) {
+        alert(result.message || "Failed to delete unit");
+        return;
+      }
 
+      // Refresh list
+      fetchUnits();
+    } catch (error) {
+      console.error("Delete unit error:", error);
+      alert("Server error");
+    }
+  };
+
+  const handleSearch = () => {
+    setFilterQuery(searchQuery);
+  };
+
+  const handleClear = () => {
+    setSearchQuery("");
+    setFilterQuery("");
+  };
+
+  // Client-side filtering
+  const filteredUnits = units.filter((unit) => {
+    const nameMatch = unit.unit_name?.toLowerCase().includes(filterQuery.toLowerCase());
+    const symbolMatch = unit.unit_symbol?.toLowerCase().includes(filterQuery.toLowerCase());
+    return nameMatch || symbolMatch;
+  });
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterQuery, units]);
+
+  const safeFilteredUnits = Array.isArray(filteredUnits) ? filteredUnits : [];
+  const totalPages = Math.ceil(safeFilteredUnits.length / itemsPerPage);
+  const paginatedUnits = safeFilteredUnits.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <Box sx={page}>
@@ -126,7 +190,11 @@ const handleSave = async () => {
           variant="contained"
           startIcon={<Add />}
           sx={createBtn}
-          onClick={() => setOpenForm(true)}
+          onClick={() => {
+            setEditUnit(null);
+            setFormData({ unit_name: "", unit_symbol: "" });
+            setOpenForm(true);
+          }}
         >
           Create New
         </Button>
@@ -138,14 +206,21 @@ const handleSave = async () => {
           <Typography fontSize={13} mb={0.5}>
             Name
           </Typography>
-          <TextField size="small" placeholder="Search unit" />
+          <TextField
+            size="small"
+            placeholder="Search unit"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </Box>
 
-        <Button variant="outlined" color="error">
+        <Button variant="outlined" color="error" onClick={handleSearch}>
           Search
         </Button>
 
-        <Button variant="outlined">Clear</Button>
+        <Button variant="outlined" onClick={handleClear}>
+          Clear
+        </Button>
       </Paper>
 
       {/* TABLE */}
@@ -168,27 +243,37 @@ const handleSave = async () => {
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : units.length === 0 ? (
+            ) : filteredUnits.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} align="center">
                   No data found
                 </TableCell>
               </TableRow>
             ) : (
-              units.map((unit, index) => (
+              paginatedUnits.map((unit, index) => (
                 <TableRow key={unit.id} hover>
-                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{(page - 1) * itemsPerPage + index + 1}</TableCell>
                   <TableCell>{unit.unit_name}</TableCell>
                   <TableCell>{unit.unit_symbol}</TableCell>
                   <TableCell>{formatDate(unit.created_at)}</TableCell>
                   <TableCell align="center">
-                    <IconButton sx={iconBtn}>
+                    <IconButton sx={iconBtn} onClick={() => setViewUnit(unit)}>
                       <ContentPaste fontSize="small" />
                     </IconButton>
-                    <IconButton sx={iconBtn}>
+                    <IconButton
+                      sx={iconBtn}
+                      onClick={() => {
+                        setEditUnit(unit);
+                        setFormData({
+                          unit_name: unit.unit_name,
+                          unit_symbol: unit.unit_symbol,
+                        });
+                        setOpenForm(true);
+                      }}
+                    >
                       <Edit fontSize="small" />
                     </IconButton>
-                    <IconButton sx={deleteBtn}>
+                    <IconButton sx={deleteBtn} onClick={() => handleDelete(unit.id)}>
                       <Close fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -199,14 +284,63 @@ const handleSave = async () => {
         </Table>
       </Paper>
 
-      {/* ===== CREATE UNIT FORM ===== */}
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredUnits.length)} of {safeFilteredUnits.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
+
+      {/* ===== CREATE / EDIT UNIT FORM ===== */}
       <Dialog
         open={openForm}
-        onClose={() => setOpenForm(false)}
+        onClose={() => {
+          setOpenForm(false);
+          setEditUnit(null);
+          setFormData({ unit_name: "", unit_symbol: "" });
+        }}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Add Unit</DialogTitle>
+        <DialogTitle>{editUnit ? "Edit Unit" : "Add Unit"}</DialogTitle>
 
         <DialogContent dividers>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
@@ -229,10 +363,52 @@ const handleSave = async () => {
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setOpenForm(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              setOpenForm(false);
+              setEditUnit(null);
+              setFormData({ unit_name: "", unit_symbol: "" });
+            }}
+          >
+            Cancel
+          </Button>
           <Button variant="contained" onClick={handleSave}>
             Save
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===== VIEW UNIT DETAILS ===== */}
+      <Dialog
+        open={Boolean(viewUnit)}
+        onClose={() => setViewUnit(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          Unit Details
+          <IconButton onClick={() => setViewUnit(null)} size="small" aria-label="close">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <Box display="flex" justifyContent="space-between" borderBottom="1px solid #e2e8f0" pb={1}>
+              <Typography fontWeight={600}>Unit Name:</Typography>
+              <Typography>{viewUnit?.unit_name}</Typography>
+            </Box>
+            <Box display="flex" justifyContent="space-between" borderBottom="1px solid #e2e8f0" pb={1}>
+              <Typography fontWeight={600}>Unit Symbol:</Typography>
+              <Typography>{viewUnit?.unit_symbol}</Typography>
+            </Box>
+            <Box display="flex" justifyContent="space-between" pb={1}>
+              <Typography fontWeight={600}>Created Date:</Typography>
+              <Typography>{formatDate(viewUnit?.created_at)}</Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewUnit(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

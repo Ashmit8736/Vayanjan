@@ -11,6 +11,9 @@ import {
   Divider,
   CircularProgress,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Autocomplete
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -26,9 +29,12 @@ const AddPurchase = ({ open, onClose }) => {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [purchaseType, setPurchaseType] = useState("against_po");
+
   /* ================= FORM ================= */
   const [form, setForm] = useState({
     supplier_id: "",
+    supplier_name: "",
     invoice_date: "",
     invoice_number: "",
     purchase_order_id: "",
@@ -140,13 +146,16 @@ const AddPurchase = ({ open, onClose }) => {
     try {
       const token = localStorage.getItem("authToken");
 
-      if (!form.purchase_order_id) {
+      if (purchaseType === "against_po" && !form.purchase_order_id) {
         alert("Please select Purchase Order");
+        return;
+      }
+      if (purchaseType === "direct_vendor" && !form.supplier_id && !form.supplier_name) {
+        alert("Please select or enter a Supplier");
         return;
       }
 
       const payload = {
-        purchase_order_id: Number(form.purchase_order_id),
         invoice_number: form.invoice_number || null,
         invoice_date: form.invoice_date || null,
         payment_status: form.payment_status || "pending",
@@ -162,21 +171,31 @@ const AddPurchase = ({ open, onClose }) => {
         })),
       };
 
+      if (purchaseType === "against_po") {
+        payload.purchase_order_id = Number(form.purchase_order_id);
+      } else {
+        if (form.supplier_id) payload.supplier_id = form.supplier_id;
+        if (form.supplier_name) payload.supplier_name = form.supplier_name;
+      }
+
       console.log("🚀 FINAL PAYLOAD:", payload);
 
+      const endpoint = purchaseType === "against_po" 
+        ? "http://localhost:5000/api/stockPurchaseItems/stock-purchase-items"
+        : "http://localhost:5000/api/stockPurchaseItems/direct-purchase";
+
       await axios.post(
-        "http://localhost:5000/api/stockPurchaseItems/stock-purchase-items",
+        endpoint,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // onClose();
       resetForm();
-onClose();
+      onClose();
 
     } catch (err) {
       console.error("❌ Save error", err);
-      alert("Failed to save purchase");
+      alert(err.response?.data?.message || "Failed to save purchase");
     }
   };
 
@@ -201,12 +220,14 @@ onClose();
   const resetForm = () => {
     setForm({
       supplier_id: "",
+      supplier_name: "",
       invoice_date: "",
       invoice_number: "",
       purchase_order_id: "",
       payment_status: "pending",
     });
     setRows([emptyRow]);
+    setPurchaseType("against_po");
   };
 
 
@@ -254,35 +275,85 @@ onClose();
                 mb: 4,
               }}
             >
-              <Typography fontWeight={700} mb={2}>
-                Purchase Order Details
-              </Typography>
+              <Stack direction="row" justifyContent="space-between" mb={3}>
+                <Typography fontWeight={700}>
+                  Purchase Order Details
+                </Typography>
+                
+                <ToggleButtonGroup
+                  color="primary"
+                  value={purchaseType}
+                  exclusive
+                  onChange={(e, val) => {
+                    if (val) {
+                      setPurchaseType(val);
+                      resetForm();
+                      setPurchaseType(val); // set again because resetForm reverts to against_po
+                    }
+                  }}
+                  size="small"
+                >
+                  <ToggleButton value="against_po">Against PO</ToggleButton>
+                  <ToggleButton value="direct_vendor">Direct Vendor</ToggleButton>
+                </ToggleButtonGroup>
+              </Stack>
 
               <Grid container spacing={2}>
-                <Grid item xs={3}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="PO Number"
-                    value={form.purchase_order_id}
-                    onChange={(e) => fetchPoDetails(e.target.value)}
-                  >
-                    {purchaseOrders.map((po) => (
-                      <MenuItem key={po.id} value={po.id}>
-                        {po.po_number}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+                {purchaseType === "against_po" ? (
+                  <>
+                    <Grid item xs={3}>
+                      <TextField
+                        select
+                        fullWidth
+                        label="PO Number"
+                        value={form.purchase_order_id}
+                        onChange={(e) => fetchPoDetails(e.target.value)}
+                      >
+                        {purchaseOrders.map((po) => (
+                          <MenuItem key={po.id} value={po.id}>
+                            {po.po_number}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
 
-                <Grid item xs={3}>
-                  <TextField
-                    fullWidth
-                    label="Supplier"
-                    value={form.supplier_id}
-                    InputProps={{ readOnly: true }}
-                  />
-                </Grid>
+                    <Grid item xs={3}>
+                      <TextField
+                        fullWidth
+                        label="Supplier"
+                        value={form.supplier_id}
+                        InputProps={{ readOnly: true }}
+                      />
+                    </Grid>
+                  </>
+                ) : (
+                  <Grid item xs={6}>
+                    <Autocomplete
+                      freeSolo
+                      options={suppliers.map((s) => s.name)}
+                      value={form.supplier_name || ""}
+                      onChange={(e, newValue) => {
+                        const sup = suppliers.find(s => s.name === newValue);
+                        setForm({
+                          ...form,
+                          supplier_id: sup ? sup.id : "",
+                          supplier_name: newValue || ""
+                        });
+                      }}
+                      onInputChange={(e, newInputValue) => {
+                        const sup = suppliers.find(s => s.name === newInputValue);
+                        setForm({
+                          ...form,
+                          supplier_id: sup ? sup.id : "",
+                          supplier_name: newInputValue || ""
+                        });
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Supplier Name (Select or Type New)" fullWidth />
+                      )}
+                    />
+                  </Grid>
+                )}
 
                 <Grid item xs={3}>
                   <TextField
@@ -356,21 +427,29 @@ onClose();
                   mb={1}
                 >
                   <Grid item xs={2}>
-                    <TextField
-                      select
+                    <Autocomplete
                       size="small"
-                      fullWidth
-                      value={row.raw_material_id}
-                      onChange={(e) =>
-                        handleRowChange(i, "raw_material_id", e.target.value)
+                      options={rawMaterials}
+                      getOptionLabel={(option) => option.name || ""}
+                      isOptionEqualToValue={(option, value) => option.id === value?.id}
+                      filterOptions={(options, state) => 
+                        options.filter((opt) => 
+                          (opt.name || "").toLowerCase().includes(state.inputValue.toLowerCase())
+                        )
                       }
-                    >
-                      {rawMaterials.map((r) => (
-                        <MenuItem key={r.id} value={r.id}>
-                          {r.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                      value={rawMaterials.find((r) => r.id === row.raw_material_id) || null}
+                      onChange={(event, newValue) => {
+                        handleRowChange(i, "raw_material_id", newValue ? newValue.id : "");
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Select Material"
+                          fullWidth
+                        />
+                      )}
+                      disableClearable={false}
+                    />
                   </Grid>
 
                   <Grid item xs={1}>

@@ -26,6 +26,11 @@ const ThirdPartyManagement = () => {
   const [openForm, setOpenForm] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [editSupplier, setEditSupplier] = useState(null);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
 const fetchSuppliers = async () => {
   try {
@@ -56,6 +61,9 @@ useEffect(() => {
     fetchSuppliers();
   }, []);
 
+  const safeSuppliers = Array.isArray(suppliers) ? suppliers : [];
+  const totalPages = Math.ceil(safeSuppliers.length / itemsPerPage);
+  const paginatedSuppliers = safeSuppliers.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -69,13 +77,16 @@ useEffect(() => {
         }}
       >
         <Typography fontSize={18} fontWeight={700}>
-          Supplier / Third Party Management
+          Supplier / Third Party Management 
         </Typography>
 
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => setOpenForm(true)}
+          onClick={() => {
+            setEditSupplier(null);
+            setOpenForm(true);
+          }}
           sx={{
             bgcolor: "#C62828",
             textTransform: "none",
@@ -119,7 +130,7 @@ useEffect(() => {
             </TableHead>
 
             <TableBody>
-              {suppliers.map((row) => (
+              {paginatedSuppliers.map((row) => (
                 <TableRow key={row.id}>
 
                   <TableCell>{row.name}</TableCell>
@@ -149,7 +160,13 @@ useEffect(() => {
                   </TableCell>
 
                   <TableCell align="center">
-                    <IconButton size="small">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setEditSupplier(row);
+                        setOpenForm(true);
+                      }}
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton size="small">
@@ -170,23 +187,69 @@ useEffect(() => {
           </Table>
         )}
 
-        <Box sx={{ p: 2, fontSize: 13, color: "gray" }}>
-          Showing 1 to {suppliers.length} of {suppliers.length} records
-        </Box>
+        {/* ================= PAGINATION ================= */}
+        {totalPages > 0 && (
+          <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={2} pb={2}>
+            <Typography variant="body2" color="text.secondary">
+              Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeSuppliers.length)} of {safeSuppliers.length} records
+            </Typography>
+            <Box display="flex" alignItems="center" gap={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+                sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+              >
+                Prev
+              </Button>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  bgcolor: "#1976d2",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "bold",
+                  fontSize: "14px",
+                }}
+              >
+                {page}
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+                sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+              >
+                Next
+              </Button>
+            </Box>
+          </Box>
+        )}
       </Paper>
 
       {/* ===== ADD SUPPLIER MODAL ===== */}
       <Dialog
         open={openForm}
-        onClose={() => setOpenForm(false)}
+        onClose={() => {
+          setOpenForm(false);
+          setEditSupplier(null);
+        }}
         maxWidth="lg"
         fullWidth
       >
         <DialogContent dividers>
           <AddSupplier
+            editSupplier={editSupplier}
             onClose={() => {
               setOpenForm(false);
-              fetchSuppliers(); // refresh list after add
+              setEditSupplier(null);
+              fetchSuppliers(); // refresh list after add/edit
             }}
           />
         </DialogContent>
@@ -196,3 +259,17 @@ useEffect(() => {
 };
 
 export default ThirdPartyManagement;
+
+
+
+
+
+
+
+
+
+
+
+
+
+

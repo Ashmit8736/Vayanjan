@@ -7,9 +7,11 @@ import {
   Paper,
   Typography,
   Divider,
+  Autocomplete,
 } from "@mui/material";
 import { Add, Close } from "@mui/icons-material";
 import { useEffect, useState } from "react";
+import QuickAddRawMaterial from "../Masters/QuickAddRawMaterial";
 
 const AddRecipeCreation = ({ onSuccess }) => {
   const token = localStorage.getItem("authToken");
@@ -17,6 +19,7 @@ const AddRecipeCreation = ({ onSuccess }) => {
   const [items, setItems] = useState([]);
   const [units, setUnits] = useState([]);
   const [rawMaterials, setRawMaterials] = useState([]);
+  const [openQuickAdd, setOpenQuickAdd] = useState(false);
 
   const [form, setForm] = useState({
     item_id: "",
@@ -216,29 +219,41 @@ for (let i = 0; i < form.materials.length; i++) {
           <Box
             key={i}
             display="grid"
-            gridTemplateColumns="3fr 1fr 1.5fr auto"
+            gridTemplateColumns="3fr auto 1fr 1.5fr auto"
             gap={2}
             alignItems="center"
             mb={2}
           >
-            <TextField
-              select
-              label="Raw Material"
-              value={m.raw_material_id}
-              onChange={(e) =>
-                handleMaterialChange(
-                  i,
-                  "raw_material_id",
-                  e.target.value
-                )
-              }
+            <Autocomplete
+              options={rawMaterials}
+              getOptionLabel={(option) => option ? option.name : ""}
+              value={rawMaterials.find(rm => rm.id === m.raw_material_id) || null}
+              onChange={(event, newValue) => {
+                handleMaterialChange(i, "raw_material_id", newValue ? newValue.id : "");
+                if (newValue && newValue.consume_unit_id) {
+                  handleMaterialChange(i, "consume_unit_id", newValue.consume_unit_id);
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Raw Material"
+                  size="small"
+                  fullWidth
+                />
+              )}
+              size="small"
+              fullWidth
+            />
+
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => setOpenQuickAdd(true)}
+              title="Quick Add Raw Material"
             >
-              {rawMaterials.map((rm) => (
-                <MenuItem key={rm.id} value={rm.id}>
-                  {rm.name}
-                </MenuItem>
-              ))}
-            </TextField>
+              <Add fontSize="small" />
+            </IconButton>
 
             <TextField
               label="Qty"
@@ -268,13 +283,15 @@ for (let i = 0; i < form.materials.length; i++) {
               ))}
             </TextField>
 
-            {i > 0 && (
+            {i > 0 ? (
               <IconButton
                 color="error"
                 onClick={() => removeMaterial(i)}
               >
                 <Close />
               </IconButton>
+            ) : (
+              <Box width={40} />
             )}
           </Box>
         ))}
@@ -286,6 +303,12 @@ for (let i = 0; i < form.materials.length; i++) {
           Save Recipe
         </Button>
       </Box>
+
+      <QuickAddRawMaterial
+        open={openQuickAdd}
+        onClose={() => setOpenQuickAdd(false)}
+        onSuccess={fetchRawMaterials}
+      />
     </Box>
   );
 };

@@ -56,6 +56,10 @@ const StockSummary = () => {
   // Editable Physical Counts (Closing Summary J)
   const [closingSummaries, setClosingSummaries] = useState({});
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 20;
+
   // Fetch unique categories dynamically from raw materials to populate filter
   const fetchCategories = async () => {
     try {
@@ -86,7 +90,6 @@ const StockSummary = () => {
             fromDate,
             toDate,
             category,
-            rawMaterial,
             unitType,
           },
           headers: { Authorization: `Bearer ${token}` },
@@ -108,6 +111,22 @@ const StockSummary = () => {
     fetchCategories();
     fetchReport();
   }, []);
+
+  const filteredReportData = useMemo(() => {
+    if (!rawMaterial) return reportData;
+    const searchLower = rawMaterial.toLowerCase();
+    return reportData.filter((row) =>
+      row.raw_material_name && row.raw_material_name.toLowerCase().includes(searchLower)
+    );
+  }, [reportData, rawMaterial]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rawMaterial, reportData]);
+
+  const safeFilteredReportData = Array.isArray(filteredReportData) ? filteredReportData : [];
+  const totalPages = Math.ceil(safeFilteredReportData.length / itemsPerPage);
+  const paginatedReportData = safeFilteredReportData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   const handleClear = () => {
     setFromDate(todayDate());
@@ -313,7 +332,7 @@ const StockSummary = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              reportData.map((row) => {
+              paginatedReportData.map((row) => {
                 const physicalCount =
                   closingSummaries[row.raw_material_id] !== undefined
                     ? closingSummaries[row.raw_material_id]
@@ -429,11 +448,49 @@ const StockSummary = () => {
         </Table>
       </TableContainer>
 
-      {/* Row counter info */}
-      {!loading && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, px: 0.5 }}>
-          Showing 1 to {reportData.length} of {reportData.length} records
-        </Typography>
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 0 && !loading && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredReportData.length)} of {safeFilteredReportData.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
       )}
     </Box>
   );

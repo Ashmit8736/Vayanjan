@@ -22,6 +22,7 @@ import {
   Snackbar,
   Alert,
   Grid,
+  Pagination,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
@@ -117,6 +118,10 @@ const StockPurchase = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
   // Filters State
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -128,6 +133,7 @@ const StockPurchase = () => {
 
   // Action Menu State
   const [anchorEl, setAnchorEl] = useState(null);
+  const [exportAnchorEl, setExportAnchorEl] = useState(null);
   const [activeRow, setActiveRow] = useState(null);
 
   // Timeline Log Dialog
@@ -501,7 +507,7 @@ const StockPurchase = () => {
       y += 5;
       doc.text(`(Status= ${statusText})`, 15, y);
       
-      window.open(doc.output("bloburl"), "_blank");
+      doc.save(`Purchase_Invoice_${row.invoice_number || row.po_number}.pdf`);
 
     } catch (error) {
       console.error("❌ Error generating PDF:", error);
@@ -509,23 +515,117 @@ const StockPurchase = () => {
     }
   };
 
+
+
+/* ================= EXPORT ================= */
+
+const exportCSV = (data, fileName) => {
+  const headers = [
+    "Supplier",
+    "Invoice Date",
+    "Invoice Number",
+    "PO Number",
+    "Grand Total",
+    "Payment Status",
+    "Total Paid",
+    "Status",
+    "Created By",
+  ];
+
+  const rows = data.map((row) => [
+    row.supplier_name || "",
+    row.invoice_date
+      ? new Date(row.invoice_date).toLocaleDateString("en-GB")
+      : "",
+    row.invoice_number || "",
+    row.po_number || "",
+    row.grand_total || 0,
+    row.payment_status || "",
+    row.total_paid || 0,
+    row.status || "",
+    row.created_by || "",
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const link = document.createElement("a");
+  const url = window.URL.createObjectURL(blob);
+
+  link.href = url;
+  link.setAttribute("download", fileName);
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  window.URL.revokeObjectURL(url);
+};
+
+const handleExportCurrentPage = () => {
+  exportCSV(
+    filteredData,
+    `Purchase_Current_Page_${Date.now()}.csv`
+  );
+
+  setExportAnchorEl(null);
+
+  setSnackbar({
+    open: true,
+    message: "Current Page Exported Successfully",
+    severity: "success",
+  });
+};
+
+const handleExportAll = () => {
+  exportCSV(
+    stockData,
+    `Purchase_All_Data_${Date.now()}.csv`
+  );
+
+  setExportAnchorEl(null);
+
+  setSnackbar({
+    open: true,
+    message: "All Data Exported Successfully",
+    severity: "success",
+  });
+};
+
+
   /* ================= STATS CALCULATIONS ================= */
-  const savedPurchases = filteredData.filter((row) => row.status === "completed");
+  const safeFilteredData = Array.isArray(filteredData) ? filteredData : [];
+  const savedPurchases = safeFilteredData.filter((row) => row.status === "completed");
   
   const totalAmount = savedPurchases.reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
   
-  const outstandingAmount = filteredData
+  const outstandingAmount = safeFilteredData
     .filter((row) => row.status === "completed" && row.payment_status !== "paid")
     .reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
 
   const taxAmountPaid = savedPurchases.reduce((sum, row) => sum + Number(row.tax_amount || 0), 0);
+
+  // Pagination Calculation
+  useEffect(() => {
+    setPage(1);
+  }, [filteredData]);
+
+  const totalPages = Math.ceil(safeFilteredData.length / itemsPerPage);
+  const paginatedData = safeFilteredData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <Box sx={{ p: 3, bgcolor: "#F8FAFC", minHeight: "100vh" }}>
       {/* ===== HEADER ===== */}
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography fontSize={20} fontWeight={700} color="#1E293B">
-          Purchase List
+          Purchase List 
         </Typography>
 
         <Stack direction="row" spacing={1}>
@@ -546,9 +646,33 @@ const StockPurchase = () => {
             Scan & Purchase
           </Button>
 
-          <Button variant="outlined" startIcon={<FileDownloadIcon />} sx={{ textTransform: "none", color: "#475569" }}>
-            Export
-          </Button>
+          <>
+  <Button
+    variant="outlined"
+    startIcon={<FileDownloadIcon />}
+    onClick={(e) => setExportAnchorEl(e.currentTarget)}
+    sx={{
+      textTransform: "none",
+      color: "#475569",
+    }}
+  >
+    Export
+  </Button>
+
+  <Menu
+    anchorEl={exportAnchorEl}
+    open={Boolean(exportAnchorEl)}
+    onClose={() => setExportAnchorEl(null)}
+  >
+    <MenuItem onClick={handleExportCurrentPage}>
+      Export Current Page
+    </MenuItem>
+
+    <MenuItem onClick={handleExportAll}>
+      Export All
+    </MenuItem>
+  </Menu>
+</>
         </Stack>
       </Stack>
 
@@ -678,8 +802,8 @@ const StockPurchase = () => {
             </TableHead>
 
             <TableBody>
-              {filteredData.map((row) => (
-                <TableRow key={row.id} hover>
+              {paginatedData.map((row, i) => (
+                <TableRow key={row.id || i} hover>
                   <TableCell>{row.supplier_name}</TableCell>
 
                   <TableCell>
@@ -756,6 +880,51 @@ const StockPurchase = () => {
           </Table>
         )}
       </Paper>
+
+      {/* ===== PAGINATION ===== */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} mb={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredData.length)} of {safeFilteredData.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* ===== ACTIONS 3-DOT MENU ===== */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
