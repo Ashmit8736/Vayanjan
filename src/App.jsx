@@ -9,6 +9,7 @@ import Login from "./features/auth/Login";
 import ManagerDashboard from "./features/manager/ManagerDashboard";
 import SuperAdminRoutes from "./routes/superadmin";
 import useOnlineStatus from "./hooks/useOnlineStatus";
+import Settings from "./components/Settings";
 
 // Create Material-UI theme
 const theme = createTheme({
@@ -163,6 +164,17 @@ function App() {
           element={
             isAuthenticated && (user?.role === "manager" || user?.role === "both") ? (
               <ManagerDashboard />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            isAuthenticated ? (
+              <Settings />
             ) : (
               <Navigate to="/login" replace />
             )

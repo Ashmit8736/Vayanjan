@@ -9,6 +9,7 @@ import {
     TableCell,
     TableBody,
     Divider,
+    Button,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 
@@ -19,6 +20,10 @@ const StockReport = () => {
     const [header, setHeader] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
 
@@ -66,6 +71,10 @@ const StockReport = () => {
         (sum, row) => sum + calculateTotal(row),
         0
     );
+
+    const safeItems = Array.isArray(items) ? items : [];
+    const totalPages = Math.ceil(safeItems.length / itemsPerPage);
+    const paginatedItems = safeItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
     return (
         <Box>
@@ -130,7 +139,7 @@ const StockReport = () => {
                     </TableHead>
 
                     <TableBody>
-                        {items.map((row, i) => (
+                        {paginatedItems.map((row, i) => (
                             <TableRow key={i}>
                                 <TableCell>{row.rawMaterial}</TableCell>
                                 <TableCell>{row.qty} {row.unit}</TableCell>
@@ -146,6 +155,51 @@ const StockReport = () => {
                         ))}
                     </TableBody>
                 </Table>
+
+                {/* ================= PAGINATION ================= */}
+                {totalPages > 0 && (
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+                        <Typography variant="body2" color="text.secondary">
+                            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeItems.length)} of {safeItems.length} records
+                        </Typography>
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={page === 1}
+                                onClick={() => setPage(page - 1)}
+                                sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+                            >
+                                Prev
+                            </Button>
+                            <Box
+                                sx={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: "50%",
+                                    bgcolor: "#1976d2",
+                                    color: "white",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontWeight: "bold",
+                                    fontSize: "14px",
+                                }}
+                            >
+                                {page}
+                            </Box>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={page === totalPages}
+                                onClick={() => setPage(page + 1)}
+                                sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+                            >
+                                Next
+                            </Button>
+                        </Box>
+                    </Box>
+                )}
             </Paper>
 
             {/* ===== GRAND TOTAL ===== */}

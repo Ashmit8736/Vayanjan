@@ -773,7 +773,7 @@ import {
   Checkbox, IconButton, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Dialog,
   DialogTitle, DialogContent, DialogActions, FormControl,
-  Select, InputAdornment
+  Select, InputAdornment, Autocomplete
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -788,128 +788,31 @@ import axios from "axios";
    SEARCHABLE RAW MATERIAL DROPDOWN - Custom Component
    ============================================================ */
 const SearchableRawMaterialSelect = ({ value, rawMaterials, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const containerRef = useRef(null);
-  const searchRef = useRef(null);
-
-  const selected = rawMaterials.find(rm => rm.id === value);
-
-  const filtered = rawMaterials.filter(rm =>
-    rm.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false);
-        setSearch("");
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Auto focus search input when dropdown opens
-  useEffect(() => {
-    if (open && searchRef.current) {
-      setTimeout(() => searchRef.current?.focus(), 50);
-    }
-  }, [open]);
-
-  const handleSelect = (rm) => {
-    onChange(rm.id);
-    setOpen(false);
-    setSearch("");
-  };
+  const selected = rawMaterials.find((rm) => rm.id === value) || null;
 
   return (
-    <Box ref={containerRef} sx={{ position: "relative", width: "100%" }}>
-      {/* Trigger Button */}
-      <Box
-        onClick={() => setOpen(prev => !prev)}
-        sx={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          border: "1px solid #c4c4c4", borderRadius: "4px",
-          px: 1.2, py: "6px", cursor: "pointer", bgcolor: "#fff",
-          minHeight: "37px",
-          "&:hover": { borderColor: "#333" }
-        }}
-      >
-        <Typography
-          fontSize="0.875rem"
-          color={selected ? "#111" : "#aaa"}
-          noWrap
-        >
-          {selected ? selected.name : "Select/Add Raw Material"}
-        </Typography>
-        <KeyboardArrowDownIcon
-          sx={{
-            fontSize: 18, color: "#777", ml: 1, flexShrink: 0,
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s"
-          }}
+    <Autocomplete
+      size="small"
+      options={rawMaterials}
+      getOptionLabel={(option) => option.name || ""}
+      value={selected}
+      onChange={(event, newValue) => {
+        onChange(newValue ? newValue.id : "");
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          placeholder="Search raw material..."
+          fullWidth
+          variant="outlined"
+          sx={{ bgcolor: "#fff" }}
         />
-      </Box>
-
-      {/* Dropdown Panel */}
-      {open && (
-        <Box
-          sx={{
-            position: "absolute", top: "100%", left: 0, right: 0,
-            bgcolor: "#fff", border: "1px solid #ddd",
-            borderRadius: "4px", zIndex: 9999,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            mt: "2px"
-          }}
-        >
-          {/* Search Input */}
-          <Box sx={{ p: 1, borderBottom: "1px solid #eee" }}>
-            <TextField
-              inputRef={searchRef}
-              size="small"
-              fullWidth
-              placeholder="Search raw material..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.stopPropagation()}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 16, color: "#888" }} />
-                  </InputAdornment>
-                )
-              }}
-            />
-          </Box>
-
-          {/* Options List */}
-          <Box sx={{ maxHeight: "220px", overflowY: "auto" }}>
-            {filtered.length > 0 ? (
-              filtered.map((rm) => (
-                <Box
-                  key={rm.id}
-                  onClick={() => handleSelect(rm)}
-                  sx={{
-                    px: 2, py: "8px", cursor: "pointer",
-                    fontSize: "0.875rem", color: "#222",
-                    bgcolor: value === rm.id ? "#eff6ff" : "transparent",
-                    "&:hover": { bgcolor: "#f1f5f9" }
-                  }}
-                >
-                  {rm.name}
-                </Box>
-              ))
-            ) : (
-              <Box sx={{ px: 2, py: 1.5, fontSize: "0.8rem", color: "#aaa" }}>
-                No materials found
-              </Box>
-            )}
-          </Box>
-        </Box>
       )}
-    </Box>
+      ListboxProps={{ style: { maxHeight: 220, overflow: "auto" } }}
+      noOptionsText="No materials found"
+      disableClearable={false}
+      sx={{ minWidth: 200 }}
+    />
   );
 };
 
@@ -1115,23 +1018,24 @@ const AddPurchaseOrder = ({ onClose }) => {
             <Typography fontSize={12} fontWeight={600} mb={0.5} color="#333">
               Supplier/Third Party <span style={{ color: "red" }}>*</span>
             </Typography>
-            <TextField
-              select fullWidth size="small" value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              SelectProps={{
-                displayEmpty: true,
-                renderValue: (selected) => {
-                  if (!selected) return <span style={{ color: "#aaa" }}>Select Supplier</span>;
-                  const s = suppliers.find(sup => sup.id === selected);
-                  return s ? s.name : "";
-                }
+            <Autocomplete
+              size="small"
+              options={suppliers}
+              getOptionLabel={(option) => `${option.name} (${option.company_name || ""})`}
+              value={suppliers.find((s) => s.id === supplierId) || null}
+              onChange={(event, newValue) => {
+                setSupplierId(newValue ? newValue.id : "");
               }}
-            >
-              <MenuItem disabled value=""><em>Select Supplier</em></MenuItem>
-              {suppliers.map((s) => (
-                <MenuItem key={s.id} value={s.id}>{s.name} ({s.company_name})</MenuItem>
-              ))}
-            </TextField>
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Select Supplier"
+                  fullWidth
+                />
+              )}
+              disableClearable={false}
+              noOptionsText="No suppliers found"
+            />
           </Grid>
 
           <Grid item xs={12} sm={6} md={2.5}>

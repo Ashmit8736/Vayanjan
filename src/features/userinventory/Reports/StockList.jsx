@@ -167,6 +167,7 @@ import {
   TextField,
   MenuItem,
   Select,
+  Button,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -196,6 +197,10 @@ const StockList = () => {
   const [loading, setLoading] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [searchMonth, setSearchMonth] = useState("");
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     let mounted = true;
@@ -246,6 +251,14 @@ const StockList = () => {
 
     return matchName && matchMonth;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchName, searchMonth, rows]);
+
+  const safeFilteredRows = Array.isArray(filteredRows) ? filteredRows : [];
+  const totalPages = Math.ceil(safeFilteredRows.length / itemsPerPage);
+  const paginatedRows = safeFilteredRows.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <Paper sx={{ p: 2 }}>
@@ -304,7 +317,7 @@ const StockList = () => {
             </TableRow>
           )}
 
-          {!loading && filteredRows.map((row) => (
+          {!loading && paginatedRows.map((row) => (
             <TableRow
               key={row.po_number}
               hover
@@ -329,6 +342,51 @@ const StockList = () => {
           )}
         </TableBody>
       </Table>
+
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredRows.length)} of {safeFilteredRows.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
     </Paper>
   );
 };

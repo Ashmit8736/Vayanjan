@@ -42,6 +42,10 @@ const ProductionMaster = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
   const [rawMaterials, setRawMaterials] = useState([]);
   const [units, setUnits] = useState([]);
 
@@ -110,7 +114,7 @@ const ProductionMaster = () => {
   }, []);
 
   /* ================= SEARCH & FILTER ================= */
-  const handleSearch = () => {
+  useEffect(() => {
     let result = [...items];
 
     if (searchQuery.trim() !== "") {
@@ -124,6 +128,15 @@ const ProductionMaster = () => {
     }
 
     setFilteredItems(result);
+    setPage(1); // Reset page on filter change
+  }, [searchQuery, categoryFilter, items]);
+
+  const safeFilteredItems = Array.isArray(filteredItems) ? filteredItems : [];
+  const totalPages = Math.ceil(safeFilteredItems.length / itemsPerPage);
+  const paginatedItems = safeFilteredItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  const handleSearch = () => {
+    // Kept for the Search button if still present
   };
 
   const handleClear = () => {
@@ -502,7 +515,7 @@ const handleCreateProduction = async () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredItems.map((item) => (
+              paginatedItems.map((item) => (
                 <TableRow key={item.id} hover>
                   <TableCell>
                     <Checkbox size="small" />
@@ -531,10 +544,50 @@ const handleCreateProduction = async () => {
         </Table>
       </TableContainer>
 
-      {/* Showing entries status */}
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2, px: 1 }}>
-        Showing 1 to {filteredItems.length} of {filteredItems.length} records
-      </Typography>
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredItems.length)} of {safeFilteredItems.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* ================= EDIT DIALOG POPUP (SECOND IMAGE) ================= */}
       <Dialog
