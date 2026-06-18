@@ -23,6 +23,8 @@ import {
   Checkbox,
   Stack,
   Divider,
+  Menu,
+  ListItemText,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -62,12 +64,19 @@ const Wastage = () => {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Export State
+  const [exportAnchor, setExportAnchor] = useState(null);
+
   // Filters State
   const [startDate, setStartDate] = useState(defaultStartDate());
   const [endDate, setEndDate] = useState(defaultEndDate());
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [viewMode, setViewMode] = useState("date-wise"); // 'date-wise' or 'detail-wise'
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Add Wastage Form State
   const [addForm, setAddForm] = useState({
@@ -194,6 +203,86 @@ const Wastage = () => {
     setEndDate(defaultEndDate());
     setCategoryFilter("All");
     setStatusFilter("All");
+  };
+
+  /* ================= PAGINATION LOGIC ================= */
+  const activeData = viewMode === "date-wise" ? groupedData : filteredRows;
+  const safeActiveData = Array.isArray(activeData) ? activeData : [];
+  
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate, categoryFilter, statusFilter, viewMode, rows]);
+
+  const totalPages = Math.ceil(safeActiveData.length / itemsPerPage);
+  const paginatedData = safeActiveData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  /* ================= EXPORT FUNCTIONS ================= */
+  const downloadCSV = (csv, filename) => {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCurrentPage = () => {
+    let headers = [];
+    let csvRows = [];
+    if (viewMode === "date-wise") {
+      headers = ["Date", "Status", "Value (Rs)"];
+      csvRows = [
+        headers.join(","),
+        ...paginatedData.map((row) =>
+          [row.date, row.status || "Saved", row.total || 0].join(",")
+        ),
+      ];
+    } else {
+      headers = ["Date", "Items", "Qty", "Price", "Amount"];
+      csvRows = [
+        headers.join(","),
+        ...paginatedData.map((row) =>
+          [
+            row.date,
+            row.raw_material_name,
+            `${row.quantity} ${row.unit_name || ""}`,
+            row.unit_price,
+            row.value,
+          ].map(field => `"${field}"`).join(",") // Quote strings to handle commas
+        ),
+      ];
+    }
+    downloadCSV(csvRows.join("\n"), "wastage_current_page.csv");
+  };
+
+  const handleExportAll = () => {
+    let headers = [];
+    let csvRows = [];
+    if (viewMode === "date-wise") {
+      headers = ["Date", "Status", "Value (Rs)"];
+      csvRows = [
+        headers.join(","),
+        ...safeActiveData.map((row) =>
+          [row.date, row.status || "Saved", row.total || 0].join(",")
+        ),
+      ];
+    } else {
+      headers = ["Date", "Items", "Qty", "Price", "Amount"];
+      csvRows = [
+        headers.join(","),
+        ...safeActiveData.map((row) =>
+          [
+            row.date,
+            row.raw_material_name,
+            `${row.quantity} ${row.unit_name || ""}`,
+            row.unit_price,
+            row.value,
+          ].map(field => `"${field}"`).join(",")
+        ),
+      ];
+    }
+    downloadCSV(csvRows.join("\n"), "wastage_all_records.csv");
   };
 
   /* ================= DELETE SINGLE RECORD ================= */
@@ -406,10 +495,23 @@ const Wastage = () => {
               </Button>
               <Button
                 variant="outlined"
+                onClick={(e) => setExportAnchor(e.currentTarget)}
                 sx={{ color: "#64748B", borderColor: "#CBD5E1", textTransform: "none" }}
               >
                 Export ∨
               </Button>
+              <Menu
+                anchorEl={exportAnchor}
+                open={Boolean(exportAnchor)}
+                onClose={() => setExportAnchor(null)}
+              >
+                <MenuItem onClick={() => { setExportAnchor(null); handleExportCurrentPage(); }}>
+                  <ListItemText>Export Current Page</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={() => { setExportAnchor(null); handleExportAll(); }}>
+                  <ListItemText>Export All</ListItemText>
+                </MenuItem>
+              </Menu>
             </Stack>
           </Box>
 
@@ -530,7 +632,7 @@ const Wastage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    groupedData.map((group) => (
+                    paginatedData.map((group) => (
                       <TableRow key={group.date} hover>
                         <TableCell sx={{ fontWeight: 600, color: "#1E293B" }}>{group.date}</TableCell>
                         <TableCell>
@@ -585,7 +687,7 @@ const Wastage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredRows.map((row) => (
+                    paginatedData.map((row) => (
                       <TableRow key={row.id} hover>
                         <TableCell sx={{ fontWeight: 600 }}>{row.date}</TableCell>
                         <TableCell>{row.category}</TableCell>
@@ -607,11 +709,49 @@ const Wastage = () => {
             </TableContainer>
           )}
 
-          {!loading && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, px: 0.5 }}>
-              Showing 1 to {viewMode === "date-wise" ? groupedData.length : filteredRows.length} of{" "}
-              {viewMode === "date-wise" ? groupedData.length : filteredRows.length} records
-            </Typography>
+          {/* ================= PAGINATION ================= */}
+          {!loading && totalPages > 0 && (
+            <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+              <Typography variant="body2" color="text.secondary">
+                Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeActiveData.length)} of {safeActiveData.length} records
+              </Typography>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                  sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+                >
+                  Prev
+                </Button>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    bgcolor: "#1976d2",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: "bold",
+                    fontSize: "14px",
+                  }}
+                >
+                  {page}
+                </Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={page === totalPages}
+                  onClick={() => setPage(page + 1)}
+                  sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+                >
+                  Next
+                </Button>
+              </Box>
+            </Box>
           )}
         </>
       ) : (

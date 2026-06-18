@@ -14,12 +14,17 @@ import {
   TableBody,
   Divider,
   Chip,
+  Button,
 } from "@mui/material";
 
 const PurchaseOrderReports = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
   // const formattedDate = new Date(order.purchaseDate)
   //   .toLocaleDateString("en-CA"); // YYYY-MM-DD
   const formatDate = (dateStr) => {
@@ -139,7 +144,7 @@ const PurchaseOrderReports = () => {
           </TableHead>
 
           <TableBody>
-            {order.items.map((item, index) => (
+            {order.items.slice((page - 1) * itemsPerPage, page * itemsPerPage).map((item, index) => (
               <TableRow key={index}>
                 <TableCell>{item.material}</TableCell>
                 <TableCell align="right">{item.qty}</TableCell>
@@ -152,6 +157,51 @@ const PurchaseOrderReports = () => {
             ))}
           </TableBody>
         </Table>
+
+        {/* ================= PAGINATION ================= */}
+        {Math.ceil(order.items.length / itemsPerPage) > 0 && (
+          <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1} pb={2}>
+            <Typography variant="body2" color="text.secondary">
+              Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, order.items.length)} of {order.items.length} records
+            </Typography>
+            <Box display="flex" alignItems="center" gap={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+                sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+              >
+                Prev
+              </Button>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  bgcolor: "#1976d2",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "bold",
+                  fontSize: "14px",
+                }}
+              >
+                {page}
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={page === Math.ceil(order.items.length / itemsPerPage)}
+                onClick={() => setPage(page + 1)}
+                sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+              >
+                Next
+              </Button>
+            </Box>
+          </Box>
+        )}
       </Paper>
 
       {/* ===== TOTAL SUMMARY ===== */}

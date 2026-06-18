@@ -13,6 +13,8 @@ import {
   TableBody,
   Paper,
   IconButton,
+  Autocomplete,
+  Pagination,
 } from "@mui/material";
 import { StarBorder, Save } from "@mui/icons-material";
 
@@ -20,6 +22,22 @@ const ClosingStock = () => {
   const [stockData, setStockData] = useState([]);
   const [updates, setUpdates] = useState({});
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const safeFilteredStock = Array.isArray(stockData) ? stockData.filter((row) =>
+    row.raw_material_name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) : [];
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, stockData]);
+
+  const totalPages = Math.ceil(safeFilteredStock.length / itemsPerPage);
+  const paginatedStock = safeFilteredStock.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   // 🔹 API CALL (GET AVAILABLE STOCK FOR CLOSING ENTRY)
   const fetchStock = async () => {
@@ -113,13 +131,26 @@ const ClosingStock = () => {
       {/* ================= FILTER BAR ================= */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box display="flex" gap={2} flexWrap="wrap">
-          <TextField label="Raw Material" size="small" />
+          <Autocomplete
+            size="small"
+            freeSolo
+            options={[...new Set(stockData.map((item) => item.raw_material_name))]}
+            value={searchQuery}
+            onInputChange={(e, newValue) => setSearchQuery(newValue || "")}
+            renderInput={(params) => (
+              <TextField {...params} label="Search Raw Material" sx={{ minWidth: 200 }} />
+            )}
+          />
           <Select size="small" defaultValue="All">
             <MenuItem value="All">All Categories</MenuItem>
           </Select>
-          <TextField type="date" size="small" defaultValue={new Date().toISOString().substring(0, 10)} />
+          <TextField label="Start Date" type="date" size="small" InputLabelProps={{ shrink: true }} defaultValue={new Date().toISOString().substring(0, 10)} />
+          <TextField label="End Date" type="date" size="small" InputLabelProps={{ shrink: true }} defaultValue={new Date().toISOString().substring(0, 10)} />
           <Button variant="outlined" color="error">
             Load List
+          </Button>
+          <Button variant="outlined" onClick={() => setSearchQuery("")}>
+            Clear
           </Button>
         </Box>
       </Paper>
@@ -147,14 +178,14 @@ const ClosingStock = () => {
                   Loading stock data...
                 </TableCell>
               </TableRow>
-            ) : stockData.length === 0 ? (
+            ) : safeFilteredStock.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">
                   No stock data found
                 </TableCell>
               </TableRow>
             ) : (
-              stockData.map((row) => {
+              paginatedStock.map((row) => {
                 const bookStock = Number(row.available_quantity_consume);
                 const closingInput = updates[row.raw_material_id];
                 const closingStock = closingInput !== undefined && closingInput !== "" ? Number(closingInput) : null;
@@ -217,6 +248,51 @@ const ClosingStock = () => {
           </TableBody>
         </Table>
       </Paper>
+
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredStock.length)} of {safeFilteredStock.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* ================= SAVE BUTTON ================= */}
       <Box display="flex" justifyContent="flex-end" mt={3}>

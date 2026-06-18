@@ -32,6 +32,10 @@ const RawMaterials = () => {
   const [category, setCategory] = useState("All");
   const [searchName, setSearchName] = useState("");
 
+  // 🔹 pagination state
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
   // 🔹 API data
   const [rawMaterials, setRawMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -91,6 +95,13 @@ const RawMaterials = () => {
       })
     : [];
 
+  useEffect(() => {
+    setPage(1);
+  }, [category, searchName, rawMaterials]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
   const uniqueCategories = [
     "All",
     ...new Set(rawMaterials.map((item) => item.category).filter(Boolean)),
@@ -101,7 +112,7 @@ const RawMaterials = () => {
       {/* ================= HEADER ================= */}
       <Box sx={{ display: "flex", justifycontent: "space-between", mb: 2 }}>
         <Typography variant="h6" fontWeight={700}>
-          Raw Materials Management
+          Raw Materials Management 
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1 }}>
@@ -191,7 +202,7 @@ const RawMaterials = () => {
         )}
 
         {!loading &&
-          filteredData.map((item) => (
+          paginatedData.map((item) => (
             <Box
               key={item.id}
               sx={{
@@ -234,6 +245,51 @@ const RawMaterials = () => {
             </Box>
           ))}
       </Paper>
+
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, filteredData.length)} of {filteredData.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* ================= DRAWER ================= */}
       <AddRawMaterialDrawer

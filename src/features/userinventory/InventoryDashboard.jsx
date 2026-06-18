@@ -10,6 +10,7 @@ import StockPurchase from "./Purchase/StockPurchase";
 import PurhaseOrderList from "./Purchase/PurchaseOrderList";
 import ThirdPartyManagement from "./Masters/Suppliers/ThirdPartyManagement";
 import AddSupplier from "./Masters/Suppliers/AddSupplier";
+import PurchaseBillPayments from "./Masters/Suppliers/PurchaseBillPayments";
 
 import ProductionMaster from "./Production/ProductionMaster";
 import ProductionCreate from "./Production/ProductionCreate";
@@ -60,6 +61,10 @@ const InventoryDashboard = () => {
           <Route
             path="masters/suppliers/addsupplier"
             element={<AddSupplier />}
+          />
+          <Route
+            path="masters/suppliers/purchase-bill-payments"
+            element={<PurchaseBillPayments />}
           />
 
 {/* CONSUMPTION */}

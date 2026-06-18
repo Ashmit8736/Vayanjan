@@ -58,6 +58,10 @@ const ProductionExecution = () => {
   const [filteredItems, setFilteredItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
   const [checked, setChecked] = useState({});
   const [qty, setQty] = useState({});
   const [readyItems, setReadyItems] = useState([]); // List of items sent to right panel
@@ -131,9 +135,9 @@ const ProductionExecution = () => {
     }
   };
 
-  /* ================= SEARCH FILTER ================= */
   const handleSearchChange = (val) => {
     setSearchQuery(val);
+    setPage(1); // Reset page on search
     if (val.trim() === "") {
       setFilteredItems(items);
     } else {
@@ -142,6 +146,10 @@ const ProductionExecution = () => {
       );
     }
   };
+
+  const safeFilteredItems = Array.isArray(filteredItems) ? filteredItems : [];
+  const totalPages = Math.ceil(safeFilteredItems.length / itemsPerPage);
+  const paginatedItems = safeFilteredItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   /* ================= REAL-TIME HANDLERS & TRANSFER ================= */
   const handleCheckboxChange = (itemId, isChecked) => {
@@ -358,12 +366,12 @@ const ProductionExecution = () => {
 
             {/* List of items with checkboxes and quantities */}
             <Box sx={{ flexGrow: 1, overflowY: "auto", my: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-              {filteredItems.length === 0 ? (
+              {safeFilteredItems.length === 0 ? (
                 <Typography color="text.secondary" align="center" mt={4}>
                   No items found with configured recipes
                 </Typography>
               ) : (
-                filteredItems.map(item => (
+                paginatedItems.map(item => (
                   <Box
                     key={item.id}
                     display="flex"
@@ -415,6 +423,51 @@ const ProductionExecution = () => {
                 ))
               )}
             </Box>
+
+            {/* PAGINATION UI */}
+            {totalPages > 0 && (
+              <Box display="flex" justifyContent="space-between" alignItems="center" mt={1} px={1}>
+                <Typography variant="caption" color="text.secondary">
+                  {(page - 1) * itemsPerPage + 1} - {Math.min(page * itemsPerPage, safeFilteredItems.length)} of {safeFilteredItems.length}
+                </Typography>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                    sx={{ textTransform: "none", minWidth: "50px", color: "#64748B", borderColor: "#CBD5E1", py: 0 }}
+                  >
+                    Prev
+                  </Button>
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      bgcolor: "#1976d2",
+                      color: "white",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: "bold",
+                      fontSize: "12px",
+                    }}
+                  >
+                    {page}
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={page === totalPages}
+                    onClick={() => setPage(page + 1)}
+                    sx={{ textTransform: "none", minWidth: "50px", color: "#64748B", borderColor: "#CBD5E1", py: 0 }}
+                  >
+                    Next
+                  </Button>
+                </Box>
+              </Box>
+            )}
 
             <Divider />
 

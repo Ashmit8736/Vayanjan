@@ -206,7 +206,7 @@ const Sidebar = () => {
                   label="Third Party Management"
                 />
                 <SubItem
-                  to="/masters/suppliers/purchase-bill-payments"
+                  to="/inventory/masters/suppliers/purchase-bill-payments"
                   label="Purchase Bill Payments"
                 />
               </List>
