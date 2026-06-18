@@ -22,6 +22,7 @@ import {
   Snackbar,
   Alert,
   Grid,
+  Pagination,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
@@ -116,6 +117,10 @@ const StockPurchase = () => {
   const [stockData, setStockData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Filters State
   const [startDate, setStartDate] = useState("");
@@ -596,15 +601,24 @@ const handleExportAll = () => {
 
 
   /* ================= STATS CALCULATIONS ================= */
-  const savedPurchases = filteredData.filter((row) => row.status === "completed");
+  const safeFilteredData = Array.isArray(filteredData) ? filteredData : [];
+  const savedPurchases = safeFilteredData.filter((row) => row.status === "completed");
   
   const totalAmount = savedPurchases.reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
   
-  const outstandingAmount = filteredData
+  const outstandingAmount = safeFilteredData
     .filter((row) => row.status === "completed" && row.payment_status !== "paid")
     .reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
 
   const taxAmountPaid = savedPurchases.reduce((sum, row) => sum + Number(row.tax_amount || 0), 0);
+
+  // Pagination Calculation
+  useEffect(() => {
+    setPage(1);
+  }, [filteredData]);
+
+  const totalPages = Math.ceil(safeFilteredData.length / itemsPerPage);
+  const paginatedData = safeFilteredData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <Box sx={{ p: 3, bgcolor: "#F8FAFC", minHeight: "100vh" }}>
@@ -788,8 +802,8 @@ const handleExportAll = () => {
             </TableHead>
 
             <TableBody>
-              {filteredData.map((row) => (
-                <TableRow key={row.id} hover>
+              {paginatedData.map((row, i) => (
+                <TableRow key={row.id || i} hover>
                   <TableCell>{row.supplier_name}</TableCell>
 
                   <TableCell>
@@ -866,6 +880,51 @@ const handleExportAll = () => {
           </Table>
         )}
       </Paper>
+
+      {/* ===== PAGINATION ===== */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} mb={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredData.length)} of {safeFilteredData.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* ===== ACTIONS 3-DOT MENU ===== */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>

@@ -1015,6 +1015,8 @@ import {
   Snackbar,
   Alert,
   Grid,
+  Autocomplete,
+  Pagination
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
@@ -1131,6 +1133,10 @@ const PurchaseOrderList = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -1429,9 +1435,11 @@ const PurchaseOrderList = () => {
   };
 
   /* ================= STATS ================= */
-  const processedOrders = filteredData.filter((row) => row.status === "completed");
+  const safeFilteredData = Array.isArray(filteredData) ? filteredData : [];
+  const processedOrders = safeFilteredData.filter((row) => row.status === "completed");
   const totalAmount = processedOrders.reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
-  const outstandingAmount = filteredData
+
+  const outstandingAmount = safeFilteredData
     .filter((row) => row.status === "completed" && row.payment_status !== "paid")
     .reduce((sum, row) => sum + (Number(row.grand_total || 0) - Number(row.total_paid || 0)), 0);
   const taxAmountPaid = processedOrders.reduce((sum, row) => sum + Number(row.tax_amount || 0), 0);
@@ -1477,6 +1485,14 @@ const PurchaseOrderList = () => {
     setExportAnchorEl(null);
     setSnackbar({ open: true, message: "All purchase orders exported successfully", severity: "success" });
   };
+
+  /* ================= PAGINATION ================= */
+  useEffect(() => {
+    setPage(1);
+  }, [filteredData]);
+
+  const totalPages = Math.ceil(safeFilteredData.length / itemsPerPage);
+  const paginatedData = safeFilteredData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   /* ================= RENDER ================= */
   return (
@@ -1524,10 +1540,18 @@ const PurchaseOrderList = () => {
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap gap={1.5}>
           <TextField size="small" label="Start Date" type="date" InputLabelProps={{ shrink: true }} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           <TextField size="small" label="End Date" type="date" InputLabelProps={{ shrink: true }} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          <TextField select size="small" label="To" value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)} sx={{ minWidth: 120 }}>
-            <MenuItem value="All">All</MenuItem>
-            {suppliers.map((s) => <MenuItem key={s.id} value={s.name}>{s.name}</MenuItem>)}
-          </TextField>
+          <Autocomplete
+            size="small"
+            options={["All", ...suppliers.map((s) => s.name)]}
+            value={supplierFilter}
+            onChange={(event, newValue) => {
+              setSupplierFilter(newValue || "All");
+            }}
+            renderInput={(params) => (
+              <TextField {...params} label="To" sx={{ minWidth: 150 }} />
+            )}
+            disableClearable={true}
+          />
           <TextField size="small" label="PO Number" value={poNoFilter} onChange={(e) => setPoNoFilter(e.target.value)} />
           <Button startIcon={<FilterAltOutlinedIcon />} variant="outlined" sx={{ textTransform: "none", color: "#475569" }}>More Filters</Button>
           <Button variant="contained" startIcon={<SearchIcon />} sx={{ bgcolor: "#2563EB", textTransform: "none", fontWeight: 600 }} onClick={handleSearch}>Search</Button>
@@ -1591,7 +1615,7 @@ const PurchaseOrderList = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredData.map((row) => (
+              {paginatedData.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>{row.supplier_name}</TableCell>
 
@@ -1652,6 +1676,51 @@ const PurchaseOrderList = () => {
           </Table>
         )}
       </Paper>
+
+      {/* ===== PAGINATION ===== */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} mb={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredData.length)} of {safeFilteredData.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* 3-DOT MENU */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>

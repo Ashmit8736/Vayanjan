@@ -28,6 +28,10 @@ const UnitManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
   // Edit / Create states
   const [editUnit, setEditUnit] = useState(null);
   const [openForm, setOpenForm] = useState(false);
@@ -166,6 +170,14 @@ const UnitManagement = () => {
     return nameMatch || symbolMatch;
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [filterQuery, units]);
+
+  const safeFilteredUnits = Array.isArray(filteredUnits) ? filteredUnits : [];
+  const totalPages = Math.ceil(safeFilteredUnits.length / itemsPerPage);
+  const paginatedUnits = safeFilteredUnits.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
   return (
     <Box sx={page}>
       {/* HEADER */}
@@ -238,9 +250,9 @@ const UnitManagement = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredUnits.map((unit, index) => (
+              paginatedUnits.map((unit, index) => (
                 <TableRow key={unit.id} hover>
-                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{(page - 1) * itemsPerPage + index + 1}</TableCell>
                   <TableCell>{unit.unit_name}</TableCell>
                   <TableCell>{unit.unit_symbol}</TableCell>
                   <TableCell>{formatDate(unit.created_at)}</TableCell>
@@ -271,6 +283,51 @@ const UnitManagement = () => {
           </TableBody>
         </Table>
       </Paper>
+
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} px={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * itemsPerPage + 1} to {Math.min(page * itemsPerPage, safeFilteredUnits.length)} of {safeFilteredUnits.length} records
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Prev
+            </Button>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                bgcolor: "#1976d2",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              {page}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              sx={{ textTransform: "none", minWidth: "60px", color: "#64748B", borderColor: "#CBD5E1" }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* ===== CREATE / EDIT UNIT FORM ===== */}
       <Dialog
