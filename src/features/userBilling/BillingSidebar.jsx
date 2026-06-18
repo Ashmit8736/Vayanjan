@@ -26,6 +26,7 @@ import People from "@mui/icons-material/People";
 import AccountBalanceWallet from "@mui/icons-material/AccountBalanceWallet";
 import Receipt from "@mui/icons-material/Receipt";
 import Settings from "@mui/icons-material/Settings";
+import TableRestaurant from "@mui/icons-material/TableRestaurant";
 
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -122,6 +123,26 @@ export const BillingSidebar = () => {
           >
             <Inventory2 sx={{ mr: 1.5 }} />
             <ListItemText primary="Menu Items" />
+          </ListItemButton>
+
+          {/* TABLE VIEW */}
+          <ListItemButton
+            component={NavLink}
+            to="/billing/table-view"
+            sx={menuItemStyle}
+          >
+            <TableRestaurant sx={{ mr: 1.5 }} />
+            <ListItemText primary="Table View" />
+          </ListItemButton>
+
+          {/* TABLES & AREAS CONFIGURATION */}
+          <ListItemButton
+            component={NavLink}
+            to="/billing/tables"
+            sx={menuItemStyle}
+          >
+            <Settings sx={{ mr: 1.5 }} />
+            <ListItemText primary="Table Configuration" />
           </ListItemButton>
 
           {/* INVOICES */}

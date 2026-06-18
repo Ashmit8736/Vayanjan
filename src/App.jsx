@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import UserAdminDashboard from "./features/useradmin/UserAdminDashboard";
 import InventoryDashboard from "./features/userinventory/InventoryDashboard";
 import BillingDashboard from "./features/userBilling/BillingDashboard";
+import PublicInvoiceView from "./features/userBilling/PublicInvoiceView";
 import Login from "./features/auth/Login";
 import ManagerDashboard from "./features/manager/ManagerDashboard";
 import SuperAdminRoutes from "./routes/superadmin";
@@ -72,30 +73,8 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Routes>
-        {/* <Route
-                    path="/login"
-                    element={
-                        isAuthenticated ? <Navigate to={user?.role === 'USER' ? '/user-admin' : '/dashboard'} replace /> : <Login />
-                    }
-                /> */}
-
-        {/* <Route
-          path="/login"
-          element={
-            isAuthenticated ? (
-              user?.role === "inventory" ? (
-                <Navigate to="/inventory" replace />
-              ) : user?.role === "owner" || user?.role === "owner" ? (
-                <Navigate to="/user-admin" replace />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <Login />
-            )
-          }
-        />            */}
-
+        <Route path="/public/invoice/:invoiceNumber" element={<PublicInvoiceView />} />
+        
         <Route
           path="/login"
           element={
@@ -127,20 +106,10 @@ function App() {
           }
         />
 
-        {/* <Route
-          path="/inventory/*"
-          element={
-            isAuthenticated && user?.role === "INVENTORY" ? (
-              <InventoryDashboard />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        /> */}
         <Route
           path="/inventory/*"
           element={
-            isAuthenticated && user?.role === "inventory" ? (
+            isAuthenticated && (user?.role === "inventory" || user?.role === "owner" || user?.role === "both") ? (
               <InventoryDashboard />
             ) : (
               <Navigate to="/login" replace />
@@ -151,7 +120,7 @@ function App() {
         <Route
           path="/billing/*"
           element={
-            isAuthenticated && user?.role === "billing" ? (
+            isAuthenticated && (user?.role === "billing" || user?.role === "owner" || user?.role === "both") ? (
               <BillingDashboard />
             ) : (
               <Navigate to="/login" replace />

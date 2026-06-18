@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { printInvoiceWithIframe } from "./printHelper";
+import { useSearchParams } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -9,6 +11,9 @@ import {
   IconButton,
   MenuItem,
   Divider,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -22,10 +27,21 @@ const RANDOM_CLIENTS = [
 ];
 
 const CreateInvoice = () => {
-    const [customer, setCustomer] = useState("");
+  const [searchParams] = useSearchParams();
+  const [customer, setCustomer] = useState("");
+  const [customerMobile, setCustomerMobile] = useState("");
+  const [customerLocation, setCustomerLocation] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash");
+  const [notificationMethod, setNotificationMethod] = useState("WhatsApp");
   const [invoiceNo, setInvoiceNo] = useState(`INV-${Math.floor(1000 + Math.random() * 9000)}`);
   const [tokenNumber, setTokenNumber] = useState(`TKN-${Math.floor(1000 + Math.random() * 9000)}`);
   const [availableItems, setAvailableItems] = useState([]);
+  
+  // Table & Status States
+  const [tables, setTables] = useState([]);
+  const [selectedTableId, setSelectedTableId] = useState("");
+  const [selectedTableNumber, setSelectedTableNumber] = useState("");
+  const [orderStatus, setOrderStatus] = useState("paid");
 
   const [items, setItems] = useState([
     { name: "", qty: 1, price: 0 },
@@ -47,7 +63,45 @@ const CreateInvoice = () => {
         }
       })
       .catch(err => console.error("Error fetching items in CreateInvoice:", err));
+
+    fetch("http://localhost:5000/api/dining/tables", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          setTables(res.data);
+        }
+      })
+      .catch(err => console.error("Error fetching tables in CreateInvoice:", err));
   }, []);
+
+  useEffect(() => {
+    const qTableId = searchParams.get("table_id");
+    const qTableNum = searchParams.get("table_number");
+    if (qTableId) {
+      setSelectedTableId(qTableId);
+      setOrderStatus("running");
+    }
+    if (qTableNum) {
+      setSelectedTableNumber(qTableNum);
+    }
+  }, [searchParams]);
+
+  const handleTableChange = (e) => {
+    const tableId = e.target.value;
+    setSelectedTableId(tableId);
+    if (tableId === "") {
+      setSelectedTableNumber("");
+    } else {
+      const tbl = tables.find(t => Number(t.id) === Number(tableId));
+      if (tbl) {
+        setSelectedTableNumber(tbl.table_number);
+      }
+    }
+  };
 
   const addItem = () => {
     setItems([...items, { name: "", qty: 1, price: 0 }]);
@@ -78,6 +132,9 @@ const CreateInvoice = () => {
   const handleGenerateRandom = () => {
     const randomClient = RANDOM_CLIENTS[Math.floor(Math.random() * RANDOM_CLIENTS.length)];
     setCustomer(randomClient);
+    setCustomerMobile(`+91${Math.floor(7000000000 + Math.random() * 2999999999)}`);
+    setCustomerLocation(["Jaipur", "Delhi", "Noida", "Lucknow", "Bhopal"][Math.floor(Math.random() * 5)]);
+    setPaymentMode("Cash");
 
     const generatedInv = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
     const generatedToken = `TKN-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -115,6 +172,36 @@ const CreateInvoice = () => {
   const gst = subtotal * 0.18;
   const total = subtotal + gst;
 
+  const openCustomerMessage = (invoiceNumber, customerName, mobile, location) => {
+    if (notificationMethod === "None") return;
+    const cleanMobile = String(mobile || "").replace(/\D/g, "");
+    const safeName = customerName || "Customer";
+    const formattedDate = new Date().toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(",", "");
+    const billLink = `${window.location.origin}/#/public/invoice/${invoiceNumber}`;
+    
+    // Updated to use "Vyanjan"
+    const message = `Dear ${safeName},\n\nThank you for your recent order at Vyanjan!\nYour invoice is now available. 🌟\n\n💰 Amount : Rs.${Number(total).toFixed(2)}\n📅 Date : ${formattedDate}\n🔗 View Invoice : ${billLink}\n\nHow was your experience with your order at Vyanjan today?`;
+
+    if (cleanMobile.length >= 10) {
+      if (notificationMethod === "WhatsApp") {
+        const whatsappUrl = `https://wa.me/${cleanMobile}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      } else if (notificationMethod === "SMS") {
+        const smsUrl = `sms:${cleanMobile}?body=${encodeURIComponent(message)}`;
+        window.open(smsUrl, "_blank", "noopener,noreferrer");
+      }
+    } else {
+      alert("Please enter a valid 10-digit customer mobile number.");
+    }
+  };
+
   const handleSaveInvoice = () => {
     if (!customer) {
       alert("Customer Name is required");
@@ -138,9 +225,17 @@ const CreateInvoice = () => {
       token_number: tokenNumber,
       kot_number: tokenNumber,
       client_name: customer,
+      customer_mobile: customerMobile,
+      customer_location: customerLocation,
+      payment_mode: paymentMode,
+      whatsapp_enabled: notificationMethod === "WhatsApp" ? 1 : 0,
+      notification_method: notificationMethod,
       subtotal: Number(subtotal.toFixed(2)),
       gst: Number(gst.toFixed(2)),
       total_amount: Number(total.toFixed(2)),
+      table_id: selectedTableId ? Number(selectedTableId) : null,
+      table_number: selectedTableNumber || null,
+      status: orderStatus,
       items: validItems.map(item => ({
         name: item.name,
         qty: Number(item.qty),
@@ -163,12 +258,40 @@ const CreateInvoice = () => {
         return res.json();
       })
       .then(() => {
-        alert(`Invoice ${invoiceNo} Generated, Stock Consumed & Saved successfully! ✅`);
+        alert(`Invoice ${invoiceNo} Saved successfully! ✅ E-Bill notification processed.`);
+        
+        // Print bill immediately
+        const invoicePayloadToPrint = {
+          invoice_number: invoiceNo,
+          token_number: tokenNumber,
+          total_amount: total,
+          subtotal: subtotal,
+          gst: gst,
+          cgst: gst / 2,
+          sgst: gst / 2,
+          payment_mode: paymentMode,
+          client_name: customer,
+          customer_mobile: customerMobile,
+          customer_location: customerLocation,
+          table_number: selectedTableNumber || null,
+          items: validItems
+        };
+        printInvoiceWithIframe(invoicePayloadToPrint);
+
+        // Open WhatsApp / SMS
+        openCustomerMessage(invoiceNo, customer, customerMobile, customerLocation);
+
         // Reset Form
         setCustomer("");
+        setCustomerMobile("");
+        setCustomerLocation("");
+        setPaymentMode("Cash");
         setInvoiceNo(`INV-${Math.floor(1000 + Math.random() * 9000)}`);
         setTokenNumber(`TKN-${Math.floor(1000 + Math.random() * 9000)}`);
         setItems([{ name: "", qty: 1, price: 0 }]);
+        setSelectedTableId("");
+        setSelectedTableNumber("");
+        setOrderStatus("paid");
       })
       .catch(err => {
         console.error("❌ Save invoice error:", err);
@@ -251,6 +374,95 @@ const CreateInvoice = () => {
                   value={customer}
                   onChange={(e) => setCustomer(e.target.value)}
                 />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Customer Mobile"
+                  fullWidth
+                  value={customerMobile}
+                  onChange={(e) => setCustomerMobile(e.target.value)}
+                  placeholder="e.g. 9876543210"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Customer Location"
+                  fullWidth
+                  value={customerLocation}
+                  onChange={(e) => setCustomerLocation(e.target.value)}
+                  placeholder="e.g. Jaipur"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="payment-mode-label">Payment Mode</InputLabel>
+                  <Select
+                    labelId="payment-mode-label"
+                    value={paymentMode}
+                    label="Payment Mode"
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                  >
+                    <MenuItem value="Cash">Cash</MenuItem>
+                    <MenuItem value="UPI">UPI</MenuItem>
+                    <MenuItem value="Card">Card</MenuItem>
+                    <MenuItem value="Wallet">Wallet</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="notification-method-label">Send Message Via</InputLabel>
+                  <Select
+                    labelId="notification-method-label"
+                    value={notificationMethod}
+                    label="Send Message Via"
+                    onChange={(e) => setNotificationMethod(e.target.value)}
+                  >
+                    <MenuItem value="WhatsApp">WhatsApp</MenuItem>
+                    <MenuItem value="SMS">SMS</MenuItem>
+                    <MenuItem value="None">None (Print Only)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="table-select-label">Dining Table</InputLabel>
+                  <Select
+                    labelId="table-select-label"
+                    value={selectedTableId}
+                    label="Dining Table"
+                    onChange={handleTableChange}
+                  >
+                    <MenuItem value="">Take Away / Delivery (No Table)</MenuItem>
+                    {tables.map((tbl) => (
+                      <MenuItem key={tbl.id} value={tbl.id}>
+                        Table #{tbl.table_number} ({tbl.area_name}) - {tbl.status}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="order-status-label">Order Status</InputLabel>
+                  <Select
+                    labelId="order-status-label"
+                    value={orderStatus}
+                    label="Order Status"
+                    onChange={(e) => setOrderStatus(e.target.value)}
+                  >
+                    <MenuItem value="paid">Finalized / Paid Bill</MenuItem>
+                    <MenuItem value="printed">Printed Bill (Pending Payment)</MenuItem>
+                    <MenuItem value="running">Running Table (Keep Open)</MenuItem>
+                    <MenuItem value="running_kot">Running KOT (Keep Open)</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
 

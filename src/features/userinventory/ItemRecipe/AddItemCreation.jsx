@@ -19,6 +19,7 @@ const AddItemCreation = ({ item, onSuccess, onClose }) => {
     category: "Sweet",
     selling_price: "",
     item_unit_id: "",
+    original_qty: "",
   });
 
   const [units, setUnits] = useState([]);
@@ -137,6 +138,7 @@ const AddItemCreation = ({ item, onSuccess, onClose }) => {
           category: formData.category,
           selling_price: Number(formData.selling_price),
           item_unit_id: formData.item_unit_id ? Number(formData.item_unit_id) : null,
+          original_qty: Number(formData.original_qty || 0),
         }),
       });
 
@@ -155,6 +157,7 @@ const AddItemCreation = ({ item, onSuccess, onClose }) => {
         category: "Sweet",
         selling_price: "",
         item_unit_id: "",
+        original_qty: "",
       });
 
       if (typeof onSuccess === "function") {
@@ -239,6 +242,17 @@ const AddItemCreation = ({ item, onSuccess, onClose }) => {
         value={formData.selling_price}
         onChange={handleChange}
         placeholder="Enter price (e.g. 200)"
+        fullWidth
+      />
+
+      {/* QUANTITY */}
+      <TextField
+        label="Quantity"
+        name="original_qty"
+        type="number"
+        value={formData.original_qty}
+        onChange={handleChange}
+        placeholder="Enter quantity (e.g. 50)"
         fullWidth
       />
 
