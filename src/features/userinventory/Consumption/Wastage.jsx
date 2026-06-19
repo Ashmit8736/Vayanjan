@@ -29,7 +29,9 @@ import {
   DialogActions,
   Chip,
   CircularProgress,
+  Menu,
 } from "@mui/material";
+import { jsPDF } from "jspdf";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -240,6 +242,174 @@ const Wastage = () => {
     setDetailsOpen(true);
   };
 
+  /* ================= EXPORT TO PDF ================= */
+  const [exportAnchorEl, setExportAnchorEl] = useState(null);
+
+  const getGroupedData = (dataList) => {
+    const groups = {};
+    dataList.forEach((r) => {
+      const dateStr = r.date;
+      if (!groups[dateStr]) {
+        groups[dateStr] = {
+          date: dateStr,
+          total: 0,
+          status: "Saved",
+          items: [],
+        };
+      }
+      groups[dateStr].total += Number(r.value || 0);
+      groups[dateStr].items.push(r);
+    });
+    return Object.values(groups);
+  };
+
+  const exportToPDF = (data, isDateWise, title) => {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(239, 68, 68); // Red theme
+    doc.setFontSize(20);
+    doc.text(title, 105, 18, { align: "center" });
+    
+    // Date & Time Info
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(71, 85, 105);
+    const dateStr = `Generated on: ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB")}`;
+    doc.text(dateStr, 105, 24, { align: "center" });
+
+    let y = 32;
+
+    // Line separator
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(10, y, 200, y);
+    
+    y += 6;
+
+    // Headers drawing functions
+    const drawDateWiseHeader = (doc, currentY) => {
+      doc.setFillColor(241, 245, 249);
+      doc.rect(10, currentY, 190, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      
+      doc.text("Date", 12, currentY + 5.5);
+      doc.text("Total Value (Rs)", 128, currentY + 5.5, { align: "right" });
+      doc.text("Status", 135, currentY + 5.5);
+    };
+
+    const drawDetailHeader = (doc, currentY) => {
+      doc.setFillColor(241, 245, 249);
+      doc.rect(10, currentY, 190, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      
+      doc.text("Date", 12, currentY + 5.5);
+      doc.text("Category", 37, currentY + 5.5);
+      doc.text("Raw Material", 67, currentY + 5.5);
+      doc.text("Qty", 128, currentY + 5.5, { align: "right" });
+      doc.text("Unit", 132, currentY + 5.5);
+      doc.text("Value (Rs)", 165, currentY + 5.5, { align: "right" });
+      doc.text("Reason", 169, currentY + 5.5);
+    };
+
+    const drawHeaders = (currentY) => {
+      if (isDateWise) {
+        drawDateWiseHeader(doc, currentY);
+      } else {
+        drawDetailHeader(doc, currentY);
+      }
+    };
+
+    // Draw first header
+    drawHeaders(y);
+    y += 8;
+
+    // Reset styles
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(51, 65, 85);
+
+    data.forEach((row, index) => {
+      const rowHeight = 8;
+      if (y + rowHeight > 280) {
+        doc.addPage();
+        y = 15;
+        drawHeaders(y);
+        y += 8;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(51, 65, 85);
+      }
+
+      if (index % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(10, y, 190, rowHeight, "F");
+      }
+
+      doc.setDrawColor(241, 245, 249);
+      doc.line(10, y + rowHeight, 200, y + rowHeight);
+
+      if (isDateWise) {
+        const dateVal = String(row.date || "");
+        const totalVal = `Rs ${Number(row.total || 0).toFixed(3)}`;
+        const statusVal = String(row.status || "Saved");
+
+        doc.text(dateVal, 12, y + 5.5);
+        doc.text(totalVal, 128, y + 5.5, { align: "right" });
+        doc.text(statusVal, 135, y + 5.5);
+      } else {
+        const dateVal = String(row.date || "");
+        const catVal = String(row.category || "");
+        const matVal = String(row.material || "");
+        const qtyVal = String(row.qty || 0);
+        const unitVal = String(row.unit || "");
+        const valVal = `Rs ${Number(row.value || 0).toFixed(2)}`;
+        const reasonVal = String(row.reason || "");
+
+        const truncatedCat = catVal.substring(0, 15);
+        const truncatedMat = matVal.substring(0, 22);
+        const truncatedReason = reasonVal.substring(0, 25);
+
+        doc.text(dateVal, 12, y + 5.5);
+        doc.text(truncatedCat, 37, y + 5.5);
+        doc.text(truncatedMat, 67, y + 5.5);
+        doc.text(qtyVal, 128, y + 5.5, { align: "right" });
+        doc.text(unitVal, 132, y + 5.5);
+        doc.text(valVal, 165, y + 5.5, { align: "right" });
+        doc.text(truncatedReason, 169, y + 5.5);
+      }
+
+      y += rowHeight;
+    });
+
+    const filename = `${title.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+    doc.save(filename);
+  };
+
+  const handleExportCurrentPage = () => {
+    setExportAnchorEl(null);
+    if (viewMode === "date-wise") {
+      exportToPDF(groupedData, true, "Wastage Summary Report");
+    } else {
+      exportToPDF(filteredRows, false, "Wastage Detailed Report");
+    }
+  };
+
+  const handleExportAll = () => {
+    setExportAnchorEl(null);
+    if (viewMode === "date-wise") {
+      const allGrouped = getGroupedData(rows);
+      exportToPDF(allGrouped, true, "Wastage Summary Report (All)");
+    } else {
+      exportToPDF(rows, false, "Wastage Detailed Report (All)");
+    }
+  };
+
   /* ================= ADD FORM ROW HANDLERS ================= */
   const handleAddFormRow = () => {
     setAddForm((prev) => ({
@@ -393,7 +563,7 @@ const Wastage = () => {
           {/* ================= VIEW 1: WASTAGE LIST VIEW ================= */}
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography fontSize={18} fontWeight={700} color="#1E293B">
-              Wastage List
+              Wastage List 
             </Typography>
 
             <Stack direction="row" spacing={1}>
@@ -406,10 +576,23 @@ const Wastage = () => {
               </Button>
               <Button
                 variant="outlined"
+                onClick={(e) => setExportAnchorEl(e.currentTarget)}
                 sx={{ color: "#64748B", borderColor: "#CBD5E1", textTransform: "none" }}
               >
-                Export ∨
+                Export 
               </Button>
+              <Menu
+                anchorEl={exportAnchorEl}
+                open={Boolean(exportAnchorEl)}
+                onClose={() => setExportAnchorEl(null)}
+              >
+                <MenuItem onClick={handleExportCurrentPage}>
+                  Export Current Page
+                </MenuItem>
+                <MenuItem onClick={handleExportAll}>
+                  Export All
+                </MenuItem>
+              </Menu>
             </Stack>
           </Box>
 
