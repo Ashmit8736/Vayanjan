@@ -683,6 +683,7 @@ const Vouchers = () => {
               <TableRow>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Receiving ID</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Item Name</TableCell>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Unit</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Original Qty</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Remaining Qty</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Status</TableCell>
@@ -694,7 +695,7 @@ const Vouchers = () => {
             <TableBody>
               {filteredVouchers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6, color: "text.secondary" }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 6, color: "text.secondary" }}>
                     No records found.
                   </TableCell>
                 </TableRow>
@@ -724,6 +725,11 @@ const Vouchers = () => {
                       {/* Item Name */}
                       <TableCell sx={{ fontWeight: 600, color: "#334155" }}>
                         {voucher.item_name}
+                      </TableCell>
+
+                      {/* Unit */}
+                      <TableCell align="center" sx={{ fontWeight: 600, color: "#64748B" }}>
+                        {voucher.unit || '-'}
                       </TableCell>
 
                       {/* Original Qty */}

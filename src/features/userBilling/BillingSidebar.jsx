@@ -115,6 +115,16 @@ export const BillingSidebar = () => {
             <ListItemText primary="Receiving Stock" />
           </ListItemButton>
 
+          {/* WASTAGE ITEM */}
+          <ListItemButton
+            component={NavLink}
+            to="/billing/item-wastage"
+            sx={menuItemStyle}
+          >
+            <Inventory2 sx={{ mr: 1.5 }} />
+            <ListItemText primary="Wastage Item" />
+          </ListItemButton>
+
           {/* ITEMS */}
           <ListItemButton
             component={NavLink}
