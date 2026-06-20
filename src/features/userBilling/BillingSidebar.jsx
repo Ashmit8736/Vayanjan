@@ -27,6 +27,7 @@ import AccountBalanceWallet from "@mui/icons-material/AccountBalanceWallet";
 import Receipt from "@mui/icons-material/Receipt";
 import Settings from "@mui/icons-material/Settings";
 import TableRestaurant from "@mui/icons-material/TableRestaurant";
+import ConfirmationNumber from "@mui/icons-material/ConfirmationNumber";
 
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -195,6 +196,16 @@ export const BillingSidebar = () => {
           >
             <Receipt sx={{ mr: 1.5 }} />
             <ListItemText primary="Expenses" />
+          </ListItemButton>
+
+          {/* TOKENS */}
+          <ListItemButton
+            component={NavLink}
+            to="/billing/tokens"
+            sx={menuItemStyle}
+          >
+            <ConfirmationNumber sx={{ mr: 1.5 }} />
+            <ListItemText primary="Tokens" />
           </ListItemButton>
 
           <Divider sx={{ borderColor: "#1E293B", my: 1 }} />

@@ -29,7 +29,8 @@ import {
     PowerSettingsNew,
     Person,
     Logout,
-    Menu as MenuIcon
+    Menu as MenuIcon,
+    ConfirmationNumber as ConfirmationNumberIcon
 } from '@mui/icons-material';
 import { logout } from '../../store/slices/authSlice'; // Fixed path if needed, assuming alias or relative
 
@@ -37,6 +38,7 @@ import DashboardOverview from '../../components/useradmin/DashboardOverview';
 import NewBranch from '../../components/useradmin/NewBranch'; // Import NewBranch
 import Inventory from '../../components/useradmin/Inventory';
 import UserManagement from '../../components/useradmin/UserManagement';
+import TokenReports from '../tokens/TokenReports';
 
 const UserAdminDashboard = () => {
     const dispatch = useDispatch();
@@ -74,6 +76,10 @@ const UserAdminDashboard = () => {
                 content = <UserManagement />;
                 break;
 
+            case 'tokens':
+                content = <TokenReports />;
+                break;
+
             case 'dashboard':
             default:
                 content = <DashboardOverview onNavigate={setActiveView} />; // Pass navigation handler
@@ -93,6 +99,7 @@ const UserAdminDashboard = () => {
         { id: 'myshops', label: 'My Shops', icon: Store },
         { id: 'users', label: 'User Management', icon: Group },
         { id: 'inventory', label: 'Inventory', icon: InventoryIcon },
+        { id: 'tokens', label: 'Tokens', icon: ConfirmationNumberIcon },
         { id: 'billing', label: 'Billing History', icon: History },
         { id: 'reports', label: 'Reports', icon: Assessment }
     ];

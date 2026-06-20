@@ -16,6 +16,7 @@ import Transactions from "./Transactions";
 import Expenses from "./Expenses";
 import BillingSettings from "./BillingSettings";
 import Vouchers from "./Vouchers";
+import TokenReports from "../tokens/TokenReports";
 
 const BillingDashboard = () => {
   return (
@@ -40,6 +41,7 @@ const BillingDashboard = () => {
           <Route path="transactions" element={<Transactions />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="settings" element={<BillingSettings />} />
+          <Route path="tokens" element={<TokenReports />} />
         </Routes>
       </Box>
     </Box>
