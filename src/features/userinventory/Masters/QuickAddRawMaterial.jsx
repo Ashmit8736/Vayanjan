@@ -15,7 +15,7 @@ import {
 import InventoryIcon from "@mui/icons-material/Inventory";
 import BalanceIcon from "@mui/icons-material/Balance";
 
-const QuickAddRawMaterial = ({ open, onClose, onSuccess }) => {
+const QuickAddRawMaterial = ({ open, onClose, onSuccess, initialName = "" }) => {
   /* ================= STATE ================= */
   const [form, setForm] = useState({
     name: "",
@@ -35,7 +35,7 @@ const QuickAddRawMaterial = ({ open, onClose, onSuccess }) => {
 
     // Reset Form
     setForm({
-      name: "",
+      name: initialName || "",
       category: "",
       purchase_unit_id: "",
       consume_unit_id: "",

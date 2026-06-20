@@ -20,6 +20,7 @@ import BarcodeGeneration from "./Production/BarcodeGeneration";
 import ItemCreation from "./ItemRecipe/ItemCreation";
 import RecipeCreation from "./ItemRecipe/RecipeCreation";
 import Wastage from "./Consumption/Wastage";
+import ItemWastage from "../shared/ItemWastage";
 import PurchaseOrderReports from "./Reports/PurchaseOrderReports";
 import StockList from "./Reports/StockList";
 import StockReport from "./Reports/StockReport";
@@ -69,6 +70,7 @@ const InventoryDashboard = () => {
 
 {/* CONSUMPTION */}
 <Route path="wastage" element={<Wastage />} />
+<Route path="item-wastage" element={<ItemWastage />} />
  {/* Reports */}
 
 <Route path="reports/current-stock" element={<CurrentStock />} />
