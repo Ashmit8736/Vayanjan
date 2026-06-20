@@ -339,8 +339,8 @@ const StockPurchase = () => {
       doc.setFontSize(9);
       doc.text("C-8 Amrapali Golf Homes", 108, 44);
       doc.text("Greater Noida West.", 108, 49);
-      doc.text("Farrukhabad,Uttar Pradesh", 108, 54);
-      doc.text("Mobile: +91 +917742135", 108, 59);
+      doc.text("Galaxy Plaza ,Uttar Pradesh", 108, 54);
+      doc.text("Mobile: +91 +919398746683", 108, 59);
       
       // Invoice Details below Box
       doc.setTextColor(71, 85, 105);

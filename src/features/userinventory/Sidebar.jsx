@@ -116,7 +116,10 @@ const Sidebar = () => {
           {open.consumption ? <ExpandLess /> : <ExpandMore />}
         </ListItemButton>
         <Collapse in={open.consumption}>
-          <SubItem to="/inventory/wastage" label="Wastage" />
+          <List disablePadding>
+            <SubItem to="/inventory/wastage" label="Wastage" />
+            <SubItem to="/inventory/item-wastage" label="Wastage Item" />
+          </List>
         </Collapse>
 
         {/* PRODUCTION */}

@@ -783,21 +783,46 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
+import { createFilterOptions } from "@mui/material/Autocomplete";
+import QuickAddRawMaterial from "../Masters/QuickAddRawMaterial";
 
 /* ============================================================
    SEARCHABLE RAW MATERIAL DROPDOWN - Custom Component
    ============================================================ */
-const SearchableRawMaterialSelect = ({ value, rawMaterials, onChange }) => {
+const filter = createFilterOptions();
+
+const SearchableRawMaterialSelect = ({ value, rawMaterials, onChange, onAddNew }) => {
   const selected = rawMaterials.find((rm) => rm.id === value) || null;
 
   return (
     <Autocomplete
       size="small"
       options={rawMaterials}
-      getOptionLabel={(option) => option.name || ""}
+      filterOptions={(options, params) => {
+        const filtered = filter(options, params);
+        const { inputValue } = params;
+        const isExisting = options.some((option) => inputValue === option.name);
+        if (inputValue !== "" && !isExisting) {
+          filtered.push({
+            inputValue,
+            name: `+ Add "${inputValue}"`,
+            isNew: true
+          });
+        }
+        return filtered;
+      }}
+      getOptionLabel={(option) => {
+        if (typeof option === "string") return option;
+        if (option.inputValue) return option.name;
+        return option.name || "";
+      }}
       value={selected}
       onChange={(event, newValue) => {
-        onChange(newValue ? newValue.id : "");
+        if (newValue && newValue.isNew) {
+          if (onAddNew) onAddNew(newValue.inputValue);
+        } else {
+          onChange(newValue ? newValue.id : "");
+        }
       }}
       renderInput={(params) => (
         <TextField
@@ -844,6 +869,9 @@ const AddPurchaseOrder = ({ onClose }) => {
 
   const [openDeliveryCharges, setOpenDeliveryCharges] = useState(false);
   const [deliveryCharges, setDeliveryCharges] = useState(0);
+
+  const [openQuickAdd, setOpenQuickAdd] = useState(false);
+  const [quickAddName, setQuickAddName] = useState("");
 
   const [rows, setRows] = useState([
     { checked: false, raw_material_id: "", quantity: "", unit_id: "", unit_price: "", amount: 0 }
@@ -1128,6 +1156,10 @@ const AddPurchaseOrder = ({ onClose }) => {
                       value={row.raw_material_id === "" ? null : Number(row.raw_material_id)}
                       rawMaterials={rawMaterials}
                       onChange={(materialId) => handleMaterialChange(index, materialId)}
+                      onAddNew={(name) => {
+                        setQuickAddName(name);
+                        setOpenQuickAdd(true);
+                      }}
                     />
                   </TableCell>
 
@@ -1289,6 +1321,16 @@ const AddPurchaseOrder = ({ onClose }) => {
           <Button onClick={() => setOpenDeliveryCharges(false)} variant="contained" size="small">Apply</Button>
         </DialogActions>
       </Dialog>
+
+      <QuickAddRawMaterial
+        open={openQuickAdd}
+        onClose={() => setOpenQuickAdd(false)}
+        initialName={quickAddName}
+        onSuccess={() => {
+          fetchRawMaterials();
+          setOpenQuickAdd(false);
+        }}
+      />
 
     </Box>
   );
