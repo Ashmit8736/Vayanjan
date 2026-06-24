@@ -29,6 +29,7 @@ import { useNavigate } from "react-router-dom";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import WarningIcon from "@mui/icons-material/Warning";
+import { getMyBranchesAPI } from "../../../services/api/branchAPI";
 
 /* ================= AXIOS ================= */
 const api = axios.create({
@@ -67,6 +68,8 @@ const ProductionExecution = () => {
   const [readyItems, setReadyItems] = useState([]); // List of items sent to right panel
   const [recipeMap, setRecipeMap] = useState({}); // Stores raw materials per item: { itemId: [materials] }
   const [availableStock, setAvailableStock] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [targetBranchId, setTargetBranchId] = useState("");
 
   // Dialog/Popup States
   const [loading, setLoading] = useState(false);
@@ -113,9 +116,21 @@ const ProductionExecution = () => {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const res = await getMyBranchesAPI();
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setBranches(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching branches:", err);
+    }
+  };
+
   useEffect(() => {
     fetchItems();
     fetchAvailableStock();
+    fetchBranches();
   }, [branch_id]);
 
   /* ================= FETCH RECIPE MATERIALS ON DEMAND ================= */
@@ -288,6 +303,7 @@ const ProductionExecution = () => {
       for (const item of readyItems) {
         const payload = {
           branch_id,
+          target_branch_id: targetBranchId || branch_id,
           item_id: item.id,
           recipe_id: item.recipe_id,
           produce_quantity: Number(item.entered_qty),
@@ -592,7 +608,24 @@ const ProductionExecution = () => {
       </Grid>
 
       {/* FOOTER ACTIONS */}
-      <Stack direction="row" justifyContent="flex-end" spacing={2} mt={3}>
+      <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2} mt={3}>
+        <Select
+          size="small"
+          value={targetBranchId}
+          onChange={(e) => setTargetBranchId(e.target.value)}
+          displayEmpty
+          sx={{ minWidth: 200, bgcolor: "white", borderRadius: 2 }}
+        >
+          <MenuItem value="">
+            <em>Assign to (Default Self)</em>
+          </MenuItem>
+          {branches.map(b => (
+            <MenuItem key={b.branch_id} value={b.branch_id}>
+              {b.branch_name}
+            </MenuItem>
+          ))}
+        </Select>
+
         <Button
           variant="outlined"
           onClick={() => navigate("/inventory/production")}

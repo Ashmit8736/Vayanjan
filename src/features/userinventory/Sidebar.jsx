@@ -104,6 +104,10 @@ const Sidebar = () => {
               to="/inventory/managestock/closingstock"
               label="Closing Stock"
             />
+            {/* <SubItem
+              to="/inventory/managestock/dispatchstock"
+              label="Dispatch Stock"
+            /> */}
           </List>
         </Collapse>
 
@@ -131,6 +135,7 @@ const Sidebar = () => {
           <List disablePadding>
             <SubItem to="/inventory/production" label="Production Master" />
             <SubItem to="/inventory/production/execution" label="Production Execution" />
+            <SubItem to="/inventory/production/vouchers" label="Voucher Generate" />
             <SubItem to="/inventory/production/barcode-generation" label="Barcode Generation" />
           </List>
         </Collapse>

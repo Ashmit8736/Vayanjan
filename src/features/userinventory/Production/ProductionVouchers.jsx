@@ -35,7 +35,10 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SearchIcon from "@mui/icons-material/Search";
 import WifiIcon from "@mui/icons-material/Wifi";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
-import useOnlineStatus from "../../hooks/useOnlineStatus";
+import ListAltIcon from "@mui/icons-material/ListAlt";
+import useOnlineStatus from "../../../hooks/useOnlineStatus";
+import axiosInstance from "../../../services/api/axios-config";
+import { getMyBranchesAPI } from "../../../services/api/branchAPI";
 
 // Print helper for thermal voucher receipt slip (80mm width)
 const printVoucherSlip = (voucher) => {
@@ -171,7 +174,7 @@ const printVoucherSlip = (voucher) => {
   }
 };
 
-const Vouchers = () => {
+const ProductionVouchers = () => {
   const isOnline = useOnlineStatus();
   const [vouchers, setVouchers] = useState([]);
   const [offlineVouchers, setOfflineVouchers] = useState([]);
@@ -180,32 +183,95 @@ const Vouchers = () => {
   const [syncing, setSyncing] = useState(false);
 
   const [itemsList, setItemsList] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [billingUsers, setBillingUsers] = useState([]);
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [sentVouchersDetails, setSentVouchersDetails] = useState([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [manualForm, setManualForm] = useState({
     item_name: "",
     quantity: "",
     status: "Pending",
+    target_branch_id: "",
+    target_billing_user_id: "",
   });
+
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignForm, setAssignForm] = useState({
+    source_voucher_id: "",
+    item_name: "",
+    target_branch_id: "",
+    target_billing_user_id: "",
+    forward_quantity: "",
+    max_quantity: 0
+  });
+
+  const token = localStorage.getItem("authToken");
+  let userRole = "";
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      userRole = payload.role;
+    } catch (e) {}
+  }
 
   // Load vouchers on mount / online status change
   useEffect(() => {
     fetchVouchers();
     loadOfflineVouchers();
     fetchItems();
+    fetchBranches();
+    fetchBillingUsers();
   }, [isOnline]);
 
-  const fetchItems = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
+  const fetchBillingUsers = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/item/list", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setItemsList(data.data);
+      const response = await axiosInstance.get("/users/owner/users");
+      if (response && response.success) {
+        const bUsers = response.data.filter(u => u.role === 'billing' || u.role === 'both');
+        setBillingUsers(bUsers);
+      }
+    } catch (err) {
+      console.error("Error fetching billing users:", err);
+    }
+  };
+
+  const fetchBranches = async () => {
+    try {
+      const response = await getMyBranchesAPI();
+      if (response && response.success) {
+        setBranches(response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching branches:", err);
+    }
+  };
+
+  const fetchSentVoucherDetails = async () => {
+    setLoadingDetails(true);
+    try {
+      const response = await axiosInstance.get("/vouchers/sent-details");
+      if (response && response.success) {
+        setSentVouchersDetails(response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching sent voucher details:", err);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleOpenDetails = () => {
+    fetchSentVoucherDetails();
+    setDetailsDialogOpen(true);
+  };
+
+  const fetchItems = async () => {
+    try {
+      const response = await axiosInstance.get("/item/list");
+      if (response && response.success) {
+        setItemsList(response.data);
       }
     } catch (err) {
       console.error("Error fetching items:", err);
@@ -227,6 +293,9 @@ const Vouchers = () => {
     if (!isOnline) {
       // Offline mode: save locally
       const randomId = Math.floor(100000 + Math.random() * 900000);
+      const targetBranchName = branches.find(b => b.branch_id === manualForm.target_branch_id)?.branch_name || "";
+      const targetUserName = billingUsers.find(u => u.id === manualForm.target_billing_user_id)?.name || "";
+
       const newVoucher = {
         id: `OFF-${randomId}`,
         item_name: manualForm.item_name,
@@ -236,39 +305,36 @@ const Vouchers = () => {
         created_at: new Date().toLocaleString("en-IN"),
         received_at: manualForm.status === "Received" ? new Date().toLocaleString("en-IN") : null,
         isOffline: true,
+        target_branch_id: manualForm.target_branch_id,
+        target_billing_user_id: manualForm.target_billing_user_id,
+        target_branch_name: targetBranchName,
+        target_user_name: targetUserName
       };
 
       const updated = [newVoucher, ...offlineVouchers];
       saveOfflineVouchers(updated);
       setManualDialogOpen(false);
-      setManualForm({ item_name: "", quantity: "", status: "Pending" });
+      setManualForm({ item_name: "", quantity: "", status: "Pending", target_branch_id: "", target_billing_user_id: "" });
       alert("Offline Mode: Receiving stock added locally! ✅");
       return;
     }
 
     // Online mode: save to database
-    const token = localStorage.getItem("authToken");
     try {
-      const res = await fetch("http://localhost:5000/api/vouchers/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          item_name: manualForm.item_name,
-          quantity: qty,
-          status: manualForm.status,
-        }),
+      const response = await axiosInstance.post("/vouchers/create", {
+        item_name: manualForm.item_name,
+        quantity: qty,
+        status: manualForm.status,
+        target_branch_id: manualForm.target_branch_id || undefined,
+        target_billing_user_id: manualForm.target_billing_user_id || undefined
       });
-      const data = await res.json();
-      if (data.success) {
+      if (response && response.success) {
         alert("Receiving stock created successfully! ✅");
         setManualDialogOpen(false);
-        setManualForm({ item_name: "", quantity: "", status: "Pending" });
+        setManualForm({ item_name: "", quantity: "", status: "Pending", target_branch_id: "", target_billing_user_id: "" });
         fetchVouchers();
       } else {
-        alert("Failed to create receiving stock: " + data.message);
+        alert("Failed to create receiving stock: " + (response.message || "Unknown error"));
       }
     } catch (err) {
       console.error(err);
@@ -287,7 +353,52 @@ const Vouchers = () => {
       };
       saveOfflineVouchers([newVoucher, ...offlineVouchers]);
       setManualDialogOpen(false);
-      setManualForm({ item_name: "", quantity: "", status: "Pending" });
+      setManualForm({ item_name: "", quantity: "", status: "Pending", target_branch_id: "", target_billing_user_id: "" });
+    }
+  };
+
+  const handleOpenAssignModal = (voucher) => {
+    setAssignForm({
+      source_voucher_id: voucher.id,
+      target_branch_id: "",
+      target_billing_user_id: "",
+      forward_quantity: "",
+      max_quantity: Number(voucher.remaining_quantity),
+      item_name: voucher.item_name
+    });
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignStock = async () => {
+    if (!assignForm.target_branch_id || !assignForm.forward_quantity) {
+      alert("Please select a branch and enter quantity to assign.");
+      return;
+    }
+
+    const qty = Number(assignForm.forward_quantity);
+    if (isNaN(qty) || qty <= 0 || qty > assignForm.max_quantity) {
+      alert(`Quantity must be between 1 and ${assignForm.max_quantity}`);
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post("/vouchers/forward", {
+        source_voucher_id: assignForm.source_voucher_id,
+        target_branch_id: assignForm.target_branch_id,
+        target_billing_user_id: assignForm.target_billing_user_id,
+        forward_quantity: qty
+      });
+
+      if (response && response.success) {
+        alert("Stock assigned successfully!");
+        setAssignDialogOpen(false);
+        fetchVouchers(); // Refresh list to get updated remaining quantities
+      } else {
+        alert("Failed to assign stock: " + (response.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error assigning stock. Please try again.");
     }
   };
 
@@ -453,29 +564,41 @@ const Vouchers = () => {
     const token = localStorage.getItem("authToken");
 
     try {
-      // Map back to format backend expects
-      const payload = offlineVouchers.map((v) => ({
-        item_name: v.item_name,
-        quantity: v.quantity,
-        status: v.status || "Received",
-      }));
+      let successCount = 0;
+      let errorMsgs = [];
+      
+      for (const v of offlineVouchers) {
+        try {
+          const res = await axiosInstance.post("/vouchers/create", {
+            item_name: v.item_name,
+            quantity: v.quantity,
+            status: v.status || "Pending",
+            target_branch_id: v.target_branch_id || undefined,
+            target_billing_user_id: v.target_billing_user_id || undefined
+          });
+          if (res && res.success) {
+            successCount++;
+          } else {
+            errorMsgs.push(res.message || "Unknown Error");
+          }
+        } catch(e) {
+          errorMsgs.push(e.message);
+        }
+      }
 
-      const res = await fetch("http://localhost:5000/api/vouchers/import", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ vouchers: payload }),
-      });
-      const data = await res.json();
-      if (data.success) {
+      if (successCount === offlineVouchers.length) {
         alert("Offline receiving stocks synced successfully with server! 🚀");
         localStorage.removeItem("offline_vouchers");
         setOfflineVouchers([]);
         fetchVouchers();
+      } else if (successCount > 0) {
+        alert(`Partially synced. ${successCount} succeeded. Errors: ${errorMsgs[0]}`);
+        // Remove synced ones ideally, but for now just clear all if some succeeded, or don't.
+        localStorage.removeItem("offline_vouchers");
+        setOfflineVouchers([]);
+        fetchVouchers();
       } else {
-        alert(`Failed to sync: ${data.message}`);
+        alert(`Failed to sync: ${errorMsgs[0]}`);
       }
     } catch (err) {
       console.error("Sync error:", err);
@@ -486,7 +609,7 @@ const Vouchers = () => {
   };
 
   // Toggle Voucher status to Received
-  const handleReceiveVoucher = async (voucher) => {
+  const handleReceiveVoucher = async (voucher, targetStatus = "Received") => {
     if (voucher.isOffline) {
       // For offline vouchers, update locally in state
       const updated = offlineVouchers.map((v) => {
@@ -515,7 +638,7 @@ const Vouchers = () => {
         },
         body: JSON.stringify({
           id: voucher.id,
-          status: "Received",
+          status: targetStatus
         }),
       });
       const data = await res.json();
@@ -553,10 +676,10 @@ const Vouchers = () => {
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems="center" spacing={2}>
           <Box>
             <Typography variant="h4" fontWeight={900} color="#1E293B">
-              🎫 Receiving Stock Management
+              🏷️ Production Vouchers
             </Typography>
-            <Typography variant="subtitle2" color="text.secondary">
-              Verify, receive and track finished production items
+            <Typography variant="body2" color="text.secondary">
+              Generate vouchers to assign produced items to specific branches
             </Typography>
           </Box>
 
@@ -615,6 +738,24 @@ const Vouchers = () => {
         <Grid item xs={12} md={7}>
           {/* ACTION BUTTONS */}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="flex-end">
+            {/* Voucher Details Button */}
+            <Button
+              variant="outlined"
+              startIcon={<ListAltIcon />}
+              onClick={handleOpenDetails}
+              sx={{
+                borderRadius: 3,
+                fontWeight: 600,
+                textTransform: "none",
+                color: "#2563EB",
+                borderColor: "#BFDBFE",
+                bgcolor: "#EFF6FF",
+                "&:hover": { bgcolor: "#DBEAFE", borderColor: "#93C5FD" },
+              }}
+            >
+              Voucher Details
+            </Button>
+
             <Button
               variant="outlined"
               color="primary"
@@ -662,7 +803,7 @@ const Vouchers = () => {
                 "&:hover": { bgcolor: "#7C3AED" },
               }}
             >
-              Add Receiving Stock Manually
+              Generate Voucher
             </Button>
           </Stack>
         </Grid>
@@ -684,6 +825,8 @@ const Vouchers = () => {
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Receiving ID</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Item Name</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Unit</TableCell>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Branch / Inventory</TableCell>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Billing Account</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Original Qty</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Remaining Qty</TableCell>
                 <TableCell sx={{ fontWeight: 800, color: "#475569" }} align="center">Status</TableCell>
@@ -695,16 +838,35 @@ const Vouchers = () => {
             <TableBody>
               {filteredVouchers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6, color: "text.secondary" }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6, color: "text.secondary" }}>
                     No records found.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredVouchers.map((voucher) => {
-                  const isPending = voucher.status === "Pending";
-                  const isInventoryReceived = voucher.status === "Inventory Received";
-                  const isReceived = voucher.status === "Received";
+                  const canReceive = voucher.can_receive !== 0; // default true if undefined
                   const isFullySold = Number(voucher.remaining_quantity) === 0;
+                  const roleLower = (userRole || "").toLowerCase();
+                  const isInventoryRole = roleLower.includes("inventory");
+                  const isBillingRole = roleLower.includes("billing");
+                  const hasBillingAccount = !!voucher.target_user_name;
+
+                  let showInventoryReceive = false;
+                  let showBillingReceive = false;
+                  let showPrint = false;
+                  let pendingBillingChip = false;
+
+                  if (canReceive) {
+                    if (voucher.status === "Pending") {
+                      if (isInventoryRole) showInventoryReceive = true;
+                      else if (isBillingRole) pendingBillingChip = true;
+                    } else if (voucher.status === "Inventory Received") {
+                      if (isInventoryRole) showPrint = true;
+                      else if (isBillingRole) showBillingReceive = true;
+                    } else if (voucher.status === "Received") {
+                      showPrint = true;
+                    }
+                  }
 
                   return (
                     <TableRow
@@ -731,6 +893,23 @@ const Vouchers = () => {
                       {/* Unit */}
                       <TableCell align="center" sx={{ fontWeight: 600, color: "#64748B" }}>
                         {voucher.unit || '-'}
+                      </TableCell>
+
+                      {/* Branch / Inventory */}
+                      <TableCell sx={{ fontWeight: 600, color: "#334155" }}>
+                        {!canReceive ? (
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <span>{voucher.target_branch_name}</span>
+                            <Chip label="Stock Transfer" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: 10, fontWeight: 700 }} />
+                          </Stack>
+                        ) : (
+                          voucher.target_branch_name || "Self"
+                        )}
+                      </TableCell>
+
+                      {/* Billing Account */}
+                      <TableCell sx={{ fontWeight: 600, color: "#475569" }}>
+                        {voucher.target_user_name || "-"}
                       </TableCell>
 
                       {/* Original Qty */}
@@ -765,34 +944,59 @@ const Vouchers = () => {
 
                       {/* Date/Time */}
                       <TableCell sx={{ color: "#64748B", fontSize: 13 }}>
-                        {isReceived || isInventoryReceived ? voucher.received_at || voucher.created_at : voucher.created_at}
+                        {voucher.status === "Received" || voucher.status === "Inventory Received" ? voucher.received_at || voucher.created_at : voucher.created_at}
                       </TableCell>
 
                       {/* Actions */}
                       <TableCell align="center">
                         <Stack direction="row" spacing={1} justifyContent="center">
-                          {isPending && (
-                            <Chip label="Waiting for Inventory" color="warning" size="small" sx={{ fontWeight: 600 }} />
+                          {userRole === "Inventory (Central)" && Number(voucher.remaining_quantity) > 0 && voucher.status !== "Stock Forwarded" && (
+                            <Button
+                              variant="contained"
+                              color="info"
+                              size="small"
+                              onClick={() => handleOpenAssignModal(voucher)}
+                              sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none" }}
+                            >
+                              Assign Stock
+                            </Button>
                           )}
 
-                          {isInventoryReceived && (
+                          {showInventoryReceive && (
                             <Button
                               variant="contained"
                               color="success"
                               size="small"
                               startIcon={<CheckCircleIcon />}
-                              onClick={() => handleReceiveVoucher(voucher)}
-                              sx={{
-                                borderRadius: 2,
-                                fontWeight: 700,
-                                textTransform: "none",
-                              }}
+                              onClick={() => handleReceiveVoucher(voucher, hasBillingAccount ? "Inventory Received" : "Received")}
+                              sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none" }}
                             >
-                              Verify Stock
+                              Receive & Bill
                             </Button>
                           )}
 
-                          {isReceived && (
+                          {showBillingReceive && (
+                            <Button
+                              variant="contained"
+                              color="success"
+                              size="small"
+                              startIcon={<CheckCircleIcon />}
+                              onClick={() => handleReceiveVoucher(voucher, "Received")}
+                              sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none" }}
+                            >
+                              Receive
+                            </Button>
+                          )}
+
+                          {pendingBillingChip && (
+                            <Chip label="Waiting for Inventory" color="warning" size="small" sx={{ fontWeight: 600 }} />
+                          )}
+
+                          {!canReceive && voucher.status === "Pending" && (
+                            <Chip label="Sent to Target" color="info" size="small" sx={{ fontWeight: 600 }} />
+                          )}
+
+                          {showPrint && (
                             <IconButton
                               color="primary"
                               onClick={() => printVoucherSlip(voucher)}
@@ -821,7 +1025,7 @@ const Vouchers = () => {
         PaperProps={{ sx: { borderRadius: 4 } }}
       >
         <DialogTitle sx={{ fontWeight: 800, color: "#1E293B" }}>
-          ➕ Add Receiving Stock Manually
+          ➕ Generate Production Voucher
         </DialogTitle>
         <Divider />
         <DialogContent>
@@ -849,17 +1053,63 @@ const Vouchers = () => {
               onChange={(e) => setManualForm({ ...manualForm, quantity: e.target.value })}
             />
 
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={manualForm.status}
-                label="Status"
-                onChange={(e) => setManualForm({ ...manualForm, status: e.target.value })}
-              >
-                <MenuItem value="Pending">Pending</MenuItem>
-                <MenuItem value="Received">Received</MenuItem>
-              </Select>
-            </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Branch</InputLabel>
+                <Select
+                  value={manualForm.target_branch_id}
+                  label="Branch"
+                  onChange={(e) => {
+                    const branchId = e.target.value;
+                    const relatedUser = billingUsers.find(u => u.branch_id === branchId);
+                    setManualForm({ 
+                      ...manualForm, 
+                      target_branch_id: branchId,
+                      target_billing_user_id: relatedUser ? relatedUser.id : ""
+                    });
+                  }}
+                >
+                  {branches.map((b) => (
+                    <MenuItem key={b.branch_id} value={b.branch_id}>
+                      {b.branch_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth>
+                <InputLabel>Billing Account</InputLabel>
+                <Select
+                  value={manualForm.target_billing_user_id}
+                  label="Billing Account"
+                  onChange={(e) => {
+                    const selectedUserId = e.target.value;
+                    const selectedUser = billingUsers.find(u => u.id === selectedUserId);
+                    setManualForm({ 
+                      ...manualForm, 
+                      target_billing_user_id: selectedUserId,
+                      target_branch_id: selectedUser ? selectedUser.branch_id : ""
+                    });
+                  }}
+                >
+                  {billingUsers.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>
+                      {u.name} ({u.email}) - {u.branch_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={manualForm.status}
+                  label="Status"
+                  onChange={(e) => setManualForm({ ...manualForm, status: e.target.value })}
+                >
+                  <MenuItem value="Pending">Pending</MenuItem>
+                  <MenuItem value="Received">Received</MenuItem>
+                </Select>
+              </FormControl>
           </Stack>
         </DialogContent>
         <Divider />
@@ -877,7 +1127,161 @@ const Vouchers = () => {
             color="primary"
             sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
           >
-            Save Receiving Stock
+            Generate Voucher
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* SENT VOUCHERS DETAILS DIALOG */}
+      <Dialog
+        open={detailsDialogOpen}
+        onClose={() => setDetailsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: "#1E293B", display: "flex", alignItems: "center", gap: 1 }}>
+          <ListAltIcon color="primary" /> Voucher Details (Branch-wise)
+        </DialogTitle>
+        <Divider />
+        <DialogContent>
+          {loadingDetails ? (
+            <Box display="flex" justifyContent="center" p={4}>
+              <CircularProgress />
+            </Box>
+          ) : sentVouchersDetails.length === 0 ? (
+            <Typography textAlign="center" color="text.secondary" py={4}>
+              No vouchers have been generated yet.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "#F8FAFC" }}>
+                    <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Branch / Inventory</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Billing Account</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Item Name</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: "#475569" }}>Total Quantity</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {sentVouchersDetails.map((row, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        {!row.is_self ? (
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <span>{row.target_branch}</span>
+                            <Chip label="Stock Transfer" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: 10, fontWeight: 700 }} />
+                          </Stack>
+                        ) : (
+                          row.target_branch
+                        )}
+                      </TableCell>
+                      <TableCell>{row.target_user_name || "-"}</TableCell>
+                      <TableCell>{row.item_name}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: "#0F172A" }}>
+                        {Number(row.total_quantity).toLocaleString("en-IN")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDetailsDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2, textTransform: "none" }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ASSIGN STOCK DIALOG */}
+      <Dialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: "#1E293B" }}>
+          📤 Assign Stock ({assignForm.item_name})
+        </DialogTitle>
+        <Divider />
+        <DialogContent>
+          <Stack spacing={3} mt={1}>
+            <FormControl fullWidth>
+              <InputLabel>Target Branch</InputLabel>
+              <Select
+                value={assignForm.target_branch_id}
+                label="Target Branch"
+                onChange={(e) => {
+                  const branchId = e.target.value;
+                  const relatedUser = billingUsers.find(u => u.branch_id === branchId);
+                  setAssignForm({ 
+                    ...assignForm, 
+                    target_branch_id: branchId,
+                    target_billing_user_id: relatedUser ? relatedUser.id : ""
+                  });
+                }}
+              >
+                {branches.map((b) => (
+                  <MenuItem key={b.branch_id} value={b.branch_id}>
+                    {b.branch_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Target Billing Account</InputLabel>
+              <Select
+                value={assignForm.target_billing_user_id}
+                label="Target Billing Account"
+                onChange={(e) => {
+                  const selectedUserId = e.target.value;
+                  const selectedUser = billingUsers.find(u => u.id === selectedUserId);
+                  setAssignForm({ 
+                    ...assignForm, 
+                    target_billing_user_id: selectedUserId,
+                    target_branch_id: selectedUser ? selectedUser.branch_id : ""
+                  });
+                }}
+              >
+                {billingUsers.map((u) => (
+                  <MenuItem key={u.id} value={u.id}>
+                    {u.name} ({u.email}) - {u.branch_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Quantity to Forward"
+              type="number"
+              fullWidth
+              value={assignForm.forward_quantity}
+              onChange={(e) => setAssignForm({ ...assignForm, forward_quantity: e.target.value })}
+              helperText={`Available to assign: ${assignForm.max_quantity}`}
+            />
+          </Stack>
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ p: 2, bgcolor: "#F8FAFC" }}>
+          <Button
+            onClick={() => setAssignDialogOpen(false)}
+            variant="outlined"
+            sx={{ textTransform: "none", color: "#64748B", borderColor: "#CBD5E1", borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAssignStock}
+            variant="contained"
+            color="primary"
+            sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+          >
+            Forward Stock
           </Button>
         </DialogActions>
       </Dialog>
@@ -885,4 +1289,4 @@ const Vouchers = () => {
   );
 };
 
-export default Vouchers;
+export default ProductionVouchers;

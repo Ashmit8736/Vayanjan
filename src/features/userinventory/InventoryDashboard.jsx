@@ -5,6 +5,7 @@ import UnitManagement from "./Masters/UnitManagement";
 import RawMaterials from "./Masters/RawMaterials";
 import AvailableStock from "./ManageStock/AvailableStock";
 import ClosingStock from "./ManageStock/ClosingStock";
+// import DispatchStock from "./ManageStock/DispatchStock";
 import Dashboard from "./Dashboard";
 import StockPurchase from "./Purchase/StockPurchase";
 import PurhaseOrderList from "./Purchase/PurchaseOrderList";
@@ -14,9 +15,10 @@ import PurchaseBillPayments from "./Masters/Suppliers/PurchaseBillPayments";
 
 import ProductionMaster from "./Production/ProductionMaster";
 import ProductionCreate from "./Production/ProductionCreate";
-import ProductionExecution from "./Production/ProductionExecution";
 import EditProduction from "./Production/EditProduction";
+import ProductionExecution from "./Production/ProductionExecution";
 import BarcodeGeneration from "./Production/BarcodeGeneration";
+import ProductionVouchers from "./Production/ProductionVouchers";
 import ItemCreation from "./ItemRecipe/ItemCreation";
 import RecipeCreation from "./ItemRecipe/RecipeCreation";
 import Wastage from "./Consumption/Wastage";
@@ -50,6 +52,10 @@ const InventoryDashboard = () => {
             path="managestock/closingstock"
             element={<ClosingStock />}
           />
+          {/* <Route
+            path="managestock/dispatchstock"
+            element={<DispatchStock />}
+          /> */}
           <Route path="purchase/stockpurchase" element={<StockPurchase />} />
           <Route
             path="purchase/purchaseorderlist"
@@ -95,6 +101,10 @@ const InventoryDashboard = () => {
           <Route
             path="production/barcode-generation"
             element={<BarcodeGeneration />}
+          />
+          <Route
+            path="production/vouchers"
+            element={<ProductionVouchers />}
           />
           <Route path="itemrecipe" element={<ItemCreation />} />
           <Route

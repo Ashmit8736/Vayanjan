@@ -170,10 +170,10 @@ const DashboardOverview = ({ onNavigate }) => {
                             const remaining = branchStats.limit - branchStats.used;
 
                             // Check: Agar remaining space 1 se kam hai, toh block karo
-                            if (remaining < 1) {
-                                alert(`Please upgrade your plan to create new branch. Limit: ${branchStats.limit}, Used: ${branchStats.used}`);
-                                return;
-                            }
+                            // if (remaining < 1) {
+                            //     alert(`Please upgrade your plan to create new branch. Limit: ${branchStats.limit}, Used: ${branchStats.used}`);
+                            //     return;
+                            // }
                             onNavigate('newBranch');
                         }}
                         sx={{
@@ -298,6 +298,20 @@ const DashboardOverview = ({ onNavigate }) => {
                                                 startIcon={<AccountTree />}
                                                 variant="outlined"
                                                 size="small"
+                                                onClick={() => {
+                                                    if (branchStats.loading) {
+                                                        alert("Please wait, fetching subscription details...");
+                                                        return;
+                                                    }
+
+                                                    const remaining = branchStats.limit - branchStats.used;
+
+                                                    // if (remaining < 1) {
+                                                    //     alert(`Please upgrade your plan to create new branch. Limit: ${branchStats.limit}, Used: ${branchStats.used}`);
+                                                    //     return;
+                                                    // }
+                                                    onNavigate('newBranch');
+                                                }}
                                                 sx={{
                                                     textTransform: 'none',
                                                     color: '#424242',
@@ -311,6 +325,7 @@ const DashboardOverview = ({ onNavigate }) => {
                                             <Button
                                                 variant="outlined"
                                                 size="small"
+                                                onClick={() => onNavigate('users')}
                                                 sx={{
                                                     textTransform: 'none',
                                                     color: '#009688',

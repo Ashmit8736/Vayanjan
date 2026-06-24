@@ -71,8 +71,13 @@ const AddBranchUser = ({ onCancel }) => {
 
     const handleSubmit = async () => {
         setError(null);
-        if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.branch_id || !formData.role) {
+        if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.role) {
             setError("Please fill in all required fields (*)");
+            return;
+        }
+        
+        if (formData.role !== 'inventory' && !formData.branch_id) {
+            setError("Please select a branch");
             return;
         }
 
@@ -181,31 +186,6 @@ const AddBranchUser = ({ onCancel }) => {
                                     <SectionHeader title="Assignment & Role" />
                                     <Grid container spacing={3}>
                                         <Grid item xs={12} md={6}>
-                                            <Typography variant="caption" fontWeight="600" sx={{ mb: 0.5, display: 'block' }}>Assign Branch *</Typography>
-                                            <Box sx={{
-                                                display: 'flex', alignItems: 'center', bgcolor: 'white',
-                                                border: '1px solid #E0E0E0', borderRadius: 2, px: 2, py: 0.5
-                                            }}>
-                                                <Store sx={{ color: 'text.secondary', mr: 1.5, fontSize: '1.2rem' }} />
-                                                <Select
-                                                    fullWidth
-                                                    variant="standard"
-                                                    disableUnderline
-                                                    value={formData.branch_id}
-                                                    onChange={handleFieldChange('branch_id')}
-                                                    displayEmpty
-                                                    sx={{ fontSize: '0.9rem' }}
-                                                >
-                                                    <MenuItem value="" disabled>Select Branch</MenuItem>
-                                                    {branches.map(branch => (
-                                                        <MenuItem key={branch.branch_id} value={branch.branch_id}>
-                                                            {branch.branch_name}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </Box>
-                                        </Grid>
-                                        <Grid item xs={12} md={6}>
                                             <Typography variant="caption" fontWeight="600" sx={{ mb: 0.5, display: 'block' }}>User Role *</Typography>
                                             <Box sx={{
                                                 display: 'flex', alignItems: 'center', bgcolor: 'white',
@@ -217,15 +197,49 @@ const AddBranchUser = ({ onCancel }) => {
                                                     variant="standard"
                                                     disableUnderline
                                                     value={formData.role}
-                                                    onChange={handleFieldChange('role')}
+                                                    onChange={(e) => {
+                                                        const newRole = e.target.value;
+                                                        setFormData(prev => ({ 
+                                                            ...prev, 
+                                                            role: newRole,
+                                                            branch_id: newRole === 'inventory' ? '' : prev.branch_id 
+                                                        }));
+                                                    }}
                                                     sx={{ fontSize: '0.9rem' }}
                                                 >
                                                     <MenuItem value="billing">Billing</MenuItem>
-                                                    <MenuItem value="inventory">Inventory</MenuItem>
+                                                    <MenuItem value="inventory">Inventory (Central)</MenuItem>
                                                     <MenuItem value="both">Both</MenuItem>
                                                 </Select>
                                             </Box>
                                         </Grid>
+                                        {formData.role !== 'inventory' && (
+                                            <Grid item xs={12} md={6}>
+                                                <Typography variant="caption" fontWeight="600" sx={{ mb: 0.5, display: 'block' }}>Assign Branch *</Typography>
+                                                <Box sx={{
+                                                    display: 'flex', alignItems: 'center', bgcolor: 'white',
+                                                    border: '1px solid #E0E0E0', borderRadius: 2, px: 2, py: 0.5
+                                                }}>
+                                                    <Store sx={{ color: 'text.secondary', mr: 1.5, fontSize: '1.2rem' }} />
+                                                    <Select
+                                                        fullWidth
+                                                        variant="standard"
+                                                        disableUnderline
+                                                        value={formData.branch_id}
+                                                        onChange={handleFieldChange('branch_id')}
+                                                        displayEmpty
+                                                        sx={{ fontSize: '0.9rem' }}
+                                                    >
+                                                        <MenuItem value="" disabled>Select Branch</MenuItem>
+                                                        {branches.map(branch => (
+                                                            <MenuItem key={branch.branch_id} value={branch.branch_id}>
+                                                                {branch.branch_name}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </Box>
+                                            </Grid>
+                                        )}
                                     </Grid>
                                 </Grid>
 
